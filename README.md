@@ -21,7 +21,9 @@ Live at:
 - **Portal-aligned visual identity** — navy (`#133353`) headings,
   warm-white (`#faf8fa`) page background, system-font UI chrome,
   white-card surfaces with soft shadows, accent blue (`#4a9eff`)
-  focus rings. CSS custom properties in `styles/global.scss`.
+  focus rings. CSS custom properties in `styles/global.scss`. The
+  navbar logo is sized + padded (44 px tall, 18 / 32 px chrome)
+  to match the noden.com.au marketing-site wordmark dominance.
 - **BSD-4 attribution** in the page footer (bottom-right corner):
   > *This product includes software developed by Nikhil Mehta.*
 - **Single-route topology** — the upstream's `v1` (textarea-based)
@@ -34,10 +36,13 @@ Live at:
 - **Monaco editors** in two side-by-side cards. Default language is
   plain text — no JavaScript auto-formatting, no red squiggles, no
   autocompletes, no hover popovers. It's a paste box, not an IDE.
-- **Per-pane syntax selector** + **scan-to-detect** icon button:
-  - The selector pins a specific Monaco language id.
-  - The scan button flips the pane back to auto-detect mode and
-    runs `detectLanguage()` against current content immediately.
+- **Always-on auto-detect** with a manual override hatch — every
+  keystroke / paste triggers a debounced `detectLanguage()` pass
+  unless the user has pinned a specific language. A scroll-icon
+  button in each pane header opens the language picker (a native
+  `<select>` triggered programmatically via `showPicker()` with
+  a focus fallback). Picking *Auto-detect* resumes the background
+  detection loop; picking a concrete language pins it.
 - **Network-vendor language packs** (registered as Monarch tokenizers
   in `helpers/customLanguages.ts`):
   - **Juniper (Junos OS)** — both `set system host-name foo`
@@ -57,7 +62,9 @@ Live at:
   *Auto-detect* icon buttons in the pane header.
 - **Full-height editors** — the panes claim all leftover vertical
   space between the navbar and the bottom controls; empty boxes
-  fill the viewport, not a fixed 400 px well.
+  fill the viewport, not a fixed 400 px well. The diff viewer on
+  `/diff` follows the same cascade so the diff itself always sits
+  within the viewport rather than overflowing the page.
 
 ### Diff viewer (`/diff`)
 
@@ -106,9 +113,11 @@ Live at:
   from the navbar.
 - "Made with ♥ using Nuxt & Tailwind by © Nikhil Mehta" footer
   (replaced with the legal-minimum BSD attribution).
-- "A tool that helps you compare…" / "Don't worry, We don't
+- "A tool that helps you compare…" / "Don't worry, we don't
   store any of your data" upstream hero block on the home page
-  (privacy note moved under the Compare button instead).
+  (and the under-button privacy note that briefly replaced it —
+  the BSD attribution in the bottom-right is the only auxiliary
+  text on the editor route now).
 - `twitter:creator` pointing at the upstream author.
 - v1 (textarea-based) `/` and `/diff` pages and their `inlineDiff`
   / `singleDiff` / `swapDiffContent` components.

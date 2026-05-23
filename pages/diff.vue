@@ -355,9 +355,18 @@ export default Vue.extend({
 </script>
 
 <style>
+/* Mirror the index page's flex-cascade so the diff viewer always
+ * claims all leftover viewport height (between navbar / action bar
+ * / pane-labels and the footer). main is flex-1 (from global.scss),
+ * .noden-diff-section is the only flex-1 child of main, the shell
+ * is the only flex-1 child of the section, the Monaco container
+ * fills the shell. min-height: 0 at every step lets the children
+ * actually shrink/grow within their parent. */
 .noden-diff-section {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 12px;
   width: 100%;
   color: var(--noden-text-body, #2d2a2e);
@@ -376,6 +385,8 @@ export default Vue.extend({
  * looks like one of the editor panes from the home page. */
 .noden-diff-shell {
   position: relative;
+  flex: 1 1 auto;
+  min-height: 320px;
   width: 100%;
   background: var(--noden-bg-primary, #ffffff);
   border: 1px solid var(--noden-border-light, #e5e7eb);
@@ -389,8 +400,7 @@ export default Vue.extend({
 }
 .noden-diff-viewer {
   width: 100%;
-  height: calc(100vh - 14rem);
-  min-height: 480px;
+  height: 100%;
 }
 
 /* Per-pane edit pill. Two of them: left pill anchors to the right

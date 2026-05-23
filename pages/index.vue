@@ -25,11 +25,24 @@
                 placeholder="Label this side…"
                 aria-label="Original text block label"
               />
+              <!-- Scroll-icon button opens the language picker. The
+                   <select> is the actual menu source so a11y stays
+                   intact; the button just programmatically pops it. -->
+              <button
+                type="button"
+                class="noden-pane-icon-btn"
+                :aria-label="'Change syntax (current: ' + lhsLangLabel + ')'"
+                :title="'Syntax: ' + lhsLangLabel"
+                @click="openLangPicker('lhs')"
+              >
+                <Scan />
+              </button>
               <select
+                ref="lhsLangSelect"
                 v-model="lhsLang"
-                class="noden-lang-select"
-                aria-label="Syntax for left pane"
-                title="Syntax highlighting"
+                class="noden-lang-select-hidden"
+                aria-hidden="true"
+                tabindex="-1"
                 @change="onLangChange('lhs')"
               >
                 <option
@@ -38,17 +51,6 @@
                   :value="opt.id"
                 >{{ opt.label }}</option>
               </select>
-              <button
-                type="button"
-                class="noden-pane-icon-btn"
-                :class="{ 'is-active': lhsAuto }"
-                :aria-pressed="lhsAuto"
-                aria-label="Auto-detect language for left pane"
-                title="Auto-detect language"
-                @click="autoDetect('lhs')"
-              >
-                <Scan />
-              </button>
               <button
                 type="button"
                 class="noden-pane-icon-btn"
@@ -74,11 +76,21 @@
                 placeholder="Label this side…"
                 aria-label="Changed text block label"
               />
+              <button
+                type="button"
+                class="noden-pane-icon-btn"
+                :aria-label="'Change syntax (current: ' + rhsLangLabel + ')'"
+                :title="'Syntax: ' + rhsLangLabel"
+                @click="openLangPicker('rhs')"
+              >
+                <Scan />
+              </button>
               <select
+                ref="rhsLangSelect"
                 v-model="rhsLang"
-                class="noden-lang-select"
-                aria-label="Syntax for right pane"
-                title="Syntax highlighting"
+                class="noden-lang-select-hidden"
+                aria-hidden="true"
+                tabindex="-1"
                 @change="onLangChange('rhs')"
               >
                 <option
@@ -87,17 +99,6 @@
                   :value="opt.id"
                 >{{ opt.label }}</option>
               </select>
-              <button
-                type="button"
-                class="noden-pane-icon-btn"
-                :class="{ 'is-active': rhsAuto }"
-                :aria-pressed="rhsAuto"
-                aria-label="Auto-detect language for right pane"
-                title="Auto-detect language"
-                @click="autoDetect('rhs')"
-              >
-                <Scan />
-              </button>
               <button
                 type="button"
                 class="noden-pane-icon-btn"
@@ -132,9 +133,6 @@
           </button>
         </div>
 
-        <p class="noden-privacy">
-          Don’t worry, we don’t store any of your data.
-        </p>
       </form>
     </main>
     <Footer />
@@ -176,18 +174,14 @@ export default Vue.extend({
       lhsEditor: null,
       rhsEditor: null,
       /* Per-pane state:
-       *   lhs/rhsLang   — current Monaco language id shown in the
-       *                   dropdown.
-       *   lhs/rhsAuto   — when true, debounced detect runs on
-       *                   typing/paste; when false, the user has
-       *                   pinned a specific language via the
-       *                   dropdown. Clicking the Auto-detect (scan)
-       *                   button flips it back to true and runs
-       *                   detect once immediately. */
-      lhsLang: 'plaintext',
-      rhsLang: 'plaintext',
-      lhsAuto: true,
-      rhsAuto: true,
+       *   lhs/rhsLang   — selected Monaco language id. '__auto__'
+       *                   means background detection drives the
+       *                   model language; any concrete id pins it.
+       *                   Auto-detect is the default and always
+       *                   runs in the background unless the user
+       *                   has manually pinned a language. */
+      lhsLang: '__auto__',
+      rhsLang: '__auto__',
       languageOptions: LANGUAGE_OPTIONS,
       /* Reference to the loaded monaco module, populated once
        * loader.init() resolves. */
@@ -200,6 +194,12 @@ export default Vue.extend({
       this.lhsEditor?.updateOptions({ theme })
       this.rhsEditor?.updateOptions({ theme })
       return this.$store.state.theme.darkMode
+    },
+    lhsLangLabel(): string {
+      return LANGUAGE_OPTIONS.find((o) => o.id === this.lhsLang)?.label || 'Auto-detect'
+    },
+    rhsLangLabel(): string {
+      return LANGUAGE_OPTIONS.find((o) => o.id === this.rhsLang)?.label || 'Auto-detect'
     },
   },
   beforeMount() {
@@ -243,20 +243,19 @@ export default Vue.extend({
       registerCustomLanguages(monaco)
       this.monaco = monaco
       showTutorials(this.$cookies, this.$route.path, this.$cookies.isDarkMode)
-      /* Re-run auto-detect on the named side IFF the pane is in
-       * auto mode. Manually pinning a language via the dropdown
-       * flips auto off; clicking the Scan button flips it back on. */
+      /* Background auto-detect — runs whenever the pane's
+       * selected language is the auto sentinel. Manually picking
+       * a concrete language from the dropdown stops this from
+       * overwriting the user's choice. */
       const reDetect = (side: 'lhs' | 'rhs') => {
         const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
-        const isAuto = side === 'lhs' ? this.lhsAuto : this.rhsAuto
-        if (!editor || !isAuto) return
+        const choice = side === 'lhs' ? this.lhsLang : this.rhsLang
+        if (!editor || choice !== '__auto__') return
         const value = editor.getValue() || ''
         const lang = detectLanguage(value)
         const model = editor.getModel()
         if (model && monaco.editor.setModelLanguage) {
           monaco.editor.setModelLanguage(model, lang)
-          if (side === 'lhs') this.lhsLang = lang
-          else this.rhsLang = lang
         }
       }
       if (lhs) {
@@ -365,9 +364,9 @@ export default Vue.extend({
       this.lhsLabel = ''
       this.rhsLabel = ''
     },
-    /* Picking from the syntax dropdown pins the pane to a manual
-     * language and turns auto-detect off for that pane. Click the
-     * scan icon to re-enable auto-detect. */
+    /* Picking from the (hidden) syntax dropdown — '__auto__'
+     * resumes background detection and applies the detected
+     * language now; concrete ids pin the model. */
     onLangChange(side: 'lhs' | 'rhs') {
       const choice = side === 'lhs' ? this.lhsLang : this.rhsLang
       const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
@@ -375,24 +374,27 @@ export default Vue.extend({
       if (!editor || !monaco) return
       const model = editor.getModel()
       if (!model) return
-      if (side === 'lhs') this.lhsAuto = false
-      else this.rhsAuto = false
-      monaco.editor.setModelLanguage(model, choice)
+      if (choice === '__auto__') {
+        monaco.editor.setModelLanguage(model, detectLanguage(editor.getValue() || ''))
+      } else {
+        monaco.editor.setModelLanguage(model, choice)
+      }
     },
-    /* Scan-button handler — re-enables auto mode and runs
-     * detectLanguage against the current content immediately. */
-    autoDetect(side: 'lhs' | 'rhs') {
-      const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
-      const monaco = (this as any).monaco
-      if (!editor || !monaco) return
-      const model = editor.getModel()
-      if (!model) return
-      if (side === 'lhs') this.lhsAuto = true
-      else this.rhsAuto = true
-      const lang = detectLanguage(editor.getValue() || '')
-      monaco.editor.setModelLanguage(model, lang)
-      if (side === 'lhs') this.lhsLang = lang
-      else this.rhsLang = lang
+    /* Scroll-icon click pops the native <select>. Browsers that
+     * support HTMLSelectElement.showPicker() (Chromium, Firefox
+     * ≥104, Safari ≥17.4) get a programmatic open; older builds
+     * fall back to .focus() + a synthetic mousedown which most
+     * UAs treat as "open". */
+    openLangPicker(side: 'lhs' | 'rhs') {
+      const ref = side === 'lhs' ? 'lhsLangSelect' : 'rhsLangSelect'
+      const sel = this.$refs[ref] as HTMLSelectElement | undefined
+      if (!sel) return
+      try {
+        ;(sel as any).showPicker?.()
+        if (!('showPicker' in sel)) sel.focus()
+      } catch {
+        sel.focus()
+      }
     },
   },
 })
@@ -522,63 +524,37 @@ export default Vue.extend({
   border-color: var(--noden-primary, #2563eb);
   color: var(--noden-primary, #2563eb);
 }
-/* `is-active` paints the scan-button blue while auto-detect is the
- * active mode for that pane; clicking the dropdown turns it off. */
-.noden-pane-icon-btn.is-active {
-  background: var(--noden-primary-light, #dbeafe);
-  border-color: var(--noden-primary, #2563eb);
-  color: var(--noden-primary, #2563eb);
-}
-.dark .noden-pane-icon-btn.is-active {
-  background: rgba(37, 99, 235, 0.2);
-  border-color: #60a5fa;
-  color: #60a5fa;
-}
 .noden-pane-icon-btn :deep(svg) {
   width: 16px;
   height: 16px;
+}
+
+/* Hidden language <select>. We keep it in the DOM (a11y, native
+ * keyboard handling, and HTMLSelectElement.showPicker() needs a
+ * real element) but visually collapse it to zero footprint; the
+ * scroll-icon button next to it is the user-facing affordance.
+ * Note: `display: none` would defeat showPicker(), so we use a
+ * clip + sr-only-style trick instead. */
+.noden-lang-select-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Syntax / language selector next to the beautify button. Native
  * <select> styled to match the .noden-pane-icon-btn / label-input
  * surface — minimal chrome, portal-blue focus ring, monospaced font
  * inherits from form-control so editor + selector visually agree. */
-.noden-lang-select {
-  height: 30px;
-  padding: 0 26px 0 10px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--noden-text-primary, #1e3a5f);
-  background: var(--noden-bg-primary, #ffffff);
-  border: 1px solid var(--noden-border-light, #e5e7eb);
-  border-radius: 6px;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  /* Tiny chevron via inline SVG data URI so we don't ship an asset. */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 12px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.noden-lang-select:hover {
-  border-color: var(--noden-border-medium, #d1d5db);
-}
-.noden-lang-select:focus {
-  outline: none;
-  border-color: var(--noden-accent, #4a9eff);
-  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
-}
-.dark .noden-lang-select {
-  background-color: #111827;
-  color: #e5e7eb;
-  border-color: #374151;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-}
-.dark .noden-lang-select:hover { border-color: #4b5563; }
-.dark .noden-lang-select:focus { border-color: #60a5fa; }
+/* (legacy .noden-lang-select styles removed — the dropdown is now
+ * visually hidden and triggered by the scroll-icon button.) */
 
 .noden-editor {
   flex: 1 1 auto;
@@ -647,11 +623,4 @@ export default Vue.extend({
   border-color: #4b5563;
 }
 
-.noden-privacy {
-  margin-top: 0.25rem;
-  width: 100%;
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--noden-text-secondary, #64748b);
-}
 </style>

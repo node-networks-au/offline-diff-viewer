@@ -123,11 +123,15 @@ export function registerCustomLanguages(monaco: any) {
   })
 }
 
-/* Public language catalogue used by the UI dropdown. The dropdown
- * only carries concrete languages now — the auto-detect path is a
- * separate icon button next to the selector (toggles the per-pane
- * `autoDetect` flag back on and re-runs detectLanguage). */
+/* Public language catalogue used by the UI dropdown. The first
+ * entry is the auto-detect sentinel — the editor stays on
+ * background detection unless the user pins something concrete.
+ * The scroll-icon button next to the dropdown is the visible
+ * affordance for "open this menu" (the <select> itself is
+ * styled-but-still-native; clicking the scroll opens it
+ * programmatically). */
 export const LANGUAGE_OPTIONS: Array<{ id: string; label: string }> = [
+  { id: '__auto__', label: 'Auto-detect' },
   { id: 'plaintext', label: 'Plain text' },
   { id: 'json', label: 'JSON' },
   { id: 'yaml', label: 'YAML' },

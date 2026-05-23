@@ -84,10 +84,12 @@ export default Vue.extend({
 .noden-nav-inner {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
   max-width: 1600px;
   margin: 0 auto;
-  padding: 12px 24px;
+  /* Vertical padding matches the noden.com.au marketing-site header
+   * (logo gets ~20-24px of clear-space around it on both axes). */
+  padding: 18px 32px;
 }
 .noden-brand-link {
   display: inline-flex;
@@ -95,7 +97,10 @@ export default Vue.extend({
   text-decoration: none;
 }
 .noden-brand-link :deep(.logo-brand) {
-  height: 28px;
+  /* Bumped from 28px → 44px to mirror the noden.com.au logo
+   * dominance in the page chrome. The marketing site uses
+   * a similar 40-48px wordmark. */
+  height: 44px;
 }
 .noden-nav-link {
   display: inline-flex;
