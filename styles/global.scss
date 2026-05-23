@@ -186,27 +186,30 @@ a:hover {
   color: #93c5fd;
 }
 
+/* Hard-bound the page to exactly 100vh and hide overflow so no
+ * child can ever push the document taller than the viewport.
+ * The flex cascade beneath this lives in that fixed bucket and
+ * shrinks editors to fit when chrome is tall. */
 .page-root {
-  @apply flow-root w-full;
-  min-height: 100vh;
+  @apply w-full;
+  height: 100vh;
+  overflow: hidden;
 }
 
-/* Tall layout: navbar at the top, footer at the bottom, the routed
- * page content claims everything between. main is a flex-column so
- * its child .noden-page (and that page's flex children) can cascade
- * `flex: 1` down to the editors and let them fill the viewport. */
 .page-contents {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
   width: 100%;
+  overflow: hidden;
 }
 
 main {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
   @apply xl:container;
   margin-top: 2rem;
 }

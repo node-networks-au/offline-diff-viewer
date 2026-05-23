@@ -416,6 +416,23 @@ export default Vue.extend({
   height: 100%;
 }
 
+/* Scrollbar dedup, DOM-level. Monaco's diff editor renders two
+ * inner editors (.editor.original on the left, .editor.modified
+ * on the right), each with its own .monaco-scrollable-element
+ * scrollbar. updateOptions() on the inner editors is unreliable
+ * for hiding scrollbars (Monaco re-asserts its defaults), so we
+ * collapse the left side's scrollbar with raw CSS instead. The
+ * right-side scrollbar stays as the single canonical scroll
+ * affordance — Monaco's intra-diff sync moves both panes
+ * together. (Block is non-scoped so it reaches Monaco's
+ * externally-rendered DOM.) */
+.monaco-diff-editor .editor.original .monaco-scrollable-element > .scrollbar.vertical {
+  display: none !important;
+}
+.monaco-diff-editor .editor.original .decorationsOverviewRuler {
+  display: none !important;
+}
+
 /* Per-pane edit pill. Two of them: left pill anchors to the right
  * edge of the original (left) half of the diff, right pill anchors
  * to the right edge of the modified (right) half. Both navigate
@@ -460,16 +477,14 @@ export default Vue.extend({
   transform: scale(0.96);
 }
 .noden-pane-edit-left {
-  /* Sits at the right edge of the original (left) half. Monaco's
-   * diff editor splits the viewport ~50/50 in side-by-side mode;
-   * the original pane includes the central gutter so we position
-   * a hair to the left of the 50% mark to avoid clipping. */
-  right: calc(50% + 12px);
+  /* Sits at the right edge of the original (left) half. */
+  right: calc(50% + 14px);
 }
 .noden-pane-edit-right {
-  /* Far right of the modified (right) half, just inside the slim
-   * 8px scrollbar. */
-  right: 16px;
+  /* Far right of the modified (right) half, clearing the 8px
+   * scrollbar AND the overview ruler (~14px) so the pill never
+   * sits behind either. */
+  right: 36px;
 }
 .dark .noden-pane-edit {
   background: rgba(31, 41, 55, 0.85);
