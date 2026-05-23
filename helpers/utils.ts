@@ -114,6 +114,22 @@ export function detectLanguage(text: string): string {
       if (/^\s*[{[][\s\S]*"[^"]+"\s*:/.test(sample)) return 'json'
     }
   }
+  // Juniper Junos — set-style or curly-block hierarchical config.
+  if (/^\s*set\s+(system|interfaces|protocols|routing-options|policy-options|security|firewall|chassis|forwarding-options)\b/m.test(sample) ||
+      /^\s*(system|protocols|interfaces|routing-options|policy-options|security|firewall)\s*\{/m.test(sample)) {
+    return 'juniper'
+  }
+  // Cisco IOS / IOS-XE / NX-OS — "!" comments plus interface/router
+  // vocabulary at line starts.
+  if (/^!\s*(Last configuration|Building configuration|version |hostname )/m.test(sample) ||
+      /^\s*(interface\s+(GigabitEthernet|FastEthernet|TenGigabitEthernet|TenGigE|Ethernet|Loopback|Vlan|Port-channel|Serial)|router\s+(bgp|ospf|eigrp|isis)|line\s+(vty|con|aux)|access-list\s+\d)/im.test(sample)) {
+    return 'cisco'
+  }
+  // MikroTik RouterOS — script paths or add/set/remove key=value pairs.
+  if (/^\s*\/(interface|ip|ipv6|routing|system|user|tool|queue|firewall|certificate)\b/m.test(sample) ||
+      /^\s*(add|set|remove)\s+[a-z][\w-]*\s*=/m.test(sample)) {
+    return 'routeros'
+  }
   if (/^---\s*$/m.test(sample) ||
       /^[A-Za-z_][\w-]*:\s*(\S|$)/m.test(sample)) {
     if (!/^\s*\{[\s\S]*\}\s*$/.test(sample)) return 'yaml'

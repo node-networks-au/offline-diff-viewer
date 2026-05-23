@@ -25,6 +25,19 @@
                 placeholder="Label this side…"
                 aria-label="Original text block label"
               />
+              <select
+                v-model="lhsLang"
+                class="noden-lang-select"
+                aria-label="Syntax for left pane"
+                title="Syntax highlighting"
+                @change="onLangChange('lhs')"
+              >
+                <option
+                  v-for="opt in languageOptions"
+                  :key="opt.id"
+                  :value="opt.id"
+                >{{ opt.label }}</option>
+              </select>
               <button
                 type="button"
                 class="noden-pane-icon-btn"
@@ -50,6 +63,19 @@
                 placeholder="Label this side…"
                 aria-label="Changed text block label"
               />
+              <select
+                v-model="rhsLang"
+                class="noden-lang-select"
+                aria-label="Syntax for right pane"
+                title="Syntax highlighting"
+                @change="onLangChange('rhs')"
+              >
+                <option
+                  v-for="opt in languageOptions"
+                  :key="opt.id"
+                  :value="opt.id"
+                >{{ opt.label }}</option>
+              </select>
               <button
                 type="button"
                 class="noden-pane-icon-btn"
@@ -103,6 +129,10 @@ import {
   getMonacoEditorDefaultOptions,
   detectLanguage,
 } from '../helpers/utils'
+import {
+  registerCustomLanguages,
+  LANGUAGE_OPTIONS,
+} from '../helpers/customLanguages'
 import showTutorials from '../helpers/driverjsTutorials'
 import Navbar from '~/components/navbar.vue'
 import Footer from '~/components/footer.vue'
@@ -122,6 +152,13 @@ export default Vue.extend({
       ...this.$store.state.data,
       lhsEditor: null,
       rhsEditor: null,
+      lhsLang: '__auto__',
+      rhsLang: '__auto__',
+      languageOptions: LANGUAGE_OPTIONS,
+      /* Reference to the loaded monaco module, populated once
+       * loader.init() resolves. Used by onLangChange to switch
+       * model languages on demand. */
+      monaco: null as any,
     }
   },
   computed: {
@@ -170,13 +207,20 @@ export default Vue.extend({
     const theme = this.$cookies.isDarkMode ? 'vs-dark' : 'light'
     const monacoEditorOptions = getMonacoEditorDefaultOptions(theme)
     loader.init().then((monaco) => {
+      registerCustomLanguages(monaco)
+      this.monaco = monaco
       showTutorials(this.$cookies, this.$route.path, this.$cookies.isDarkMode)
-      const reDetect = (editor: any) => {
-        if (!editor) return
+      /* Re-run auto-detect on the named side IFF its dropdown is on
+       * "Auto-detect". When the user pins a specific language we
+       * stop overwriting their choice. */
+      const reDetect = (side: 'lhs' | 'rhs') => {
+        const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
+        const userChoice = side === 'lhs' ? this.lhsLang : this.rhsLang
+        if (!editor || userChoice !== '__auto__') return
         const value = editor.getValue() || ''
         const lang = detectLanguage(value)
         const model = editor.getModel()
-        if (model && monaco.editor.getModel) {
+        if (model && monaco.editor.setModelLanguage) {
           monaco.editor.setModelLanguage(model, lang)
         }
       }
@@ -186,12 +230,12 @@ export default Vue.extend({
           value: this.lhs || '',
           wordWrap: 'on',
         })
-        reDetect(this.lhsEditor)
-        this.lhsEditor.onDidPaste(() => reDetect(this.lhsEditor))
+        reDetect('lhs')
+        this.lhsEditor.onDidPaste(() => reDetect('lhs'))
         let lhsTimer: any = null
         this.lhsEditor.onDidChangeModelContent(() => {
           clearTimeout(lhsTimer)
-          lhsTimer = setTimeout(() => reDetect(this.lhsEditor), 300)
+          lhsTimer = setTimeout(() => reDetect('lhs'), 300)
         })
       }
       if (rhs) {
@@ -200,12 +244,12 @@ export default Vue.extend({
           value: this.rhs || '',
           wordWrap: 'on',
         })
-        reDetect(this.rhsEditor)
-        this.rhsEditor.onDidPaste(() => reDetect(this.rhsEditor))
+        reDetect('rhs')
+        this.rhsEditor.onDidPaste(() => reDetect('rhs'))
         let rhsTimer: any = null
         this.rhsEditor.onDidChangeModelContent(() => {
           clearTimeout(rhsTimer)
-          rhsTimer = setTimeout(() => reDetect(this.rhsEditor), 300)
+          rhsTimer = setTimeout(() => reDetect('rhs'), 300)
         })
       }
     })
@@ -285,6 +329,23 @@ export default Vue.extend({
       this.rhsEditor?.getModel().setValue('')
       this.lhsLabel = ''
       this.rhsLabel = ''
+    },
+    /* Triggered when either pane's syntax dropdown changes. Pinning
+     * a specific language overrides auto-detect for that pane until
+     * the user picks "Auto-detect" again. */
+    onLangChange(side: 'lhs' | 'rhs') {
+      const choice = side === 'lhs' ? this.lhsLang : this.rhsLang
+      const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
+      const monaco = (this as any).monaco
+      if (!editor || !monaco) return
+      const model = editor.getModel()
+      if (!model) return
+      if (choice === '__auto__') {
+        const value = editor.getValue() || ''
+        monaco.editor.setModelLanguage(model, detectLanguage(value))
+      } else {
+        monaco.editor.setModelLanguage(model, choice)
+      }
     },
   },
 })
@@ -406,6 +467,47 @@ export default Vue.extend({
   width: 16px;
   height: 16px;
 }
+
+/* Syntax / language selector next to the beautify button. Native
+ * <select> styled to match the .noden-pane-icon-btn / label-input
+ * surface — minimal chrome, portal-blue focus ring, monospaced font
+ * inherits from form-control so editor + selector visually agree. */
+.noden-lang-select {
+  height: 30px;
+  padding: 0 26px 0 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--noden-text-primary, #1e3a5f);
+  background: var(--noden-bg-primary, #ffffff);
+  border: 1px solid var(--noden-border-light, #e5e7eb);
+  border-radius: 6px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  /* Tiny chevron via inline SVG data URI so we don't ship an asset. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.noden-lang-select:hover {
+  border-color: var(--noden-border-medium, #d1d5db);
+}
+.noden-lang-select:focus {
+  outline: none;
+  border-color: var(--noden-accent, #4a9eff);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+}
+.dark .noden-lang-select {
+  background-color: #111827;
+  color: #e5e7eb;
+  border-color: #374151;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+.dark .noden-lang-select:hover { border-color: #4b5563; }
+.dark .noden-lang-select:focus { border-color: #60a5fa; }
 
 .noden-editor {
   flex: 1 1 0;

@@ -79,6 +79,7 @@ import {
   doUrlSafeBase64,
   detectLanguage,
 } from '../helpers/utils'
+import { registerCustomLanguages } from '../helpers/customLanguages'
 import DiffActionBar from '~/components/diffActionBar.vue'
 import Footer from '~/components/footer.vue'
 import Navbar from '~/components/navbar.vue'
@@ -239,6 +240,7 @@ export default Vue.extend({
       const theme = this.$cookies.isDarkMode ? 'vs-dark' : 'light'
       const monacoEditorOptions = getMonacoEditorDefaultOptions(theme)
       loader.init().then((monaco) => {
+        registerCustomLanguages(monaco)
         if (monacoDiffViewerEl) {
           this.monacoDiffEditor = monaco.editor.createDiffEditor(
             monacoDiffViewerEl,
