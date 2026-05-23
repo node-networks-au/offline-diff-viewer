@@ -77,20 +77,22 @@ export function getMonacoEditorDefaultOptions(theme: string) {
     minimap: { enabled: false },
     contextmenu: false,
     // No autocomplete / inline suggestions / hover popovers while
-    // typing — this is a diff paste box, not an IDE.
+    // typing — this is a diff paste box, not an IDE. Older Monaco
+    // builds (bundled with Nuxt 2 here) type some of these as
+    // booleans rather than string enums, so we stick with boolean
+    // false where possible.
     quickSuggestions: false,
     suggestOnTriggerCharacters: false,
-    acceptSuggestionOnEnter: 'off' as const,
-    wordBasedSuggestions: 'off' as const,
-    snippetSuggestions: 'none' as const,
+    acceptSuggestionOnEnter: 'off',
+    wordBasedSuggestions: false,
+    snippetSuggestions: 'none',
     parameterHints: { enabled: false },
     hover: { enabled: false },
     links: false,
-    occurrencesHighlight: 'off' as const,
+    occurrencesHighlight: false,
     selectionHighlight: false,
-    renderLineHighlight: 'none' as const,
+    renderLineHighlight: 'none',
     inlineSuggest: { enabled: false },
-    'semanticHighlighting.enabled': false,
   }
 }
 
