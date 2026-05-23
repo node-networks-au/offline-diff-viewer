@@ -2,93 +2,57 @@ import path from 'path'
 import MonacoWebpackPlugin from 'monaco-editor-webpack-plugin'
 
 const BASE_URL = 'https://diff.noden.com.au'
-// Used by all og:* / twitter:* / meta-description tags below. This is
-// the string that shows up in Slack / Teams / iMessage / Twitter link
-// previews and Google snippets.
-const DESCRIPTION = 'NodeN Diff Viewer'
-const TITLE_DESCRIPTION = DESCRIPTION
+// Open Graph + Twitter Card metadata. The upstream applied
+// `property: 'og:url'` to every meta tag, which made Slack / Teams /
+// iMessage only ever see the last og:url and never the real
+// og:title / og:description. Rewritten with the correct property=
+// attributes (the actual key social-card crawlers read by).
+const TITLE = 'NodeN Configuration Diff'
+const DESCRIPTION =
+  'Compare configurations and text side-by-side. Shareable, ' +
+  'end-to-end-encrypted links — your data is never stored server-side.'
+const OG_IMAGE = `${BASE_URL}/favicon-512x512.png`
 export default {
   ssr: false,
   head: {
-    title: 'NodeN Configuration Diff',
-    script: [
-      {
-        src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4467877923505914',
-        crossorigin: 'anonymous',
-      },
-    ],
+    title: TITLE,
+    /* Upstream's Google AdSense script removed — we don't run ads. */
+    script: [],
     meta: [
       { charset: 'utf-8' },
       {
+        hid: 'keywords',
         name: 'keywords',
         content:
-          'compare text, difference, diff view, diff viewer, diff checker, hamming distance, difference, data privacy, differentiate, differentiator, text differentiator',
+          'configuration diff, text diff, side by side diff, encrypted diff link, noden, configuration management, network configuration',
       },
       { name: 'color-scheme', content: 'dark light' },
-      {
-        name: 'viewport',
-        content: 'width=750px; initial-scale=1',
-      },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { name: 'format-detection', content: 'telephone=no' },
-      { name: 'theme-color', content: '#2563EB' },
-      { name: 'og:url', property: 'og:url', content: `${BASE_URL}` },
-      {
-        name: 'og:image',
-        property: 'og:url',
-        content: `${BASE_URL}/brand-430x495.png`,
-      },
-      { name: 'twitter:title', property: 'og:url', content: DESCRIPTION },
-      { name: 'og:title', property: 'og:url', content: DESCRIPTION },
-      { name: 'og:type', property: 'og:url', content: 'website' },
-      { name: 'description', property: 'og:url', content: DESCRIPTION },
-      { name: 'og:description', property: 'og:url', content: DESCRIPTION },
-      { name: 'twitter:description', property: 'og:url', content: DESCRIPTION },
-      { name: 'twitter:card', property: 'og:url', content: 'summary' },
-      {
-        name: 'twitter:creator',
-        property: 'og:url',
-        content: '@technikhil314',
-      },
-      {
-        name: 'og:image',
-        property: 'og:url',
-        content: `${BASE_URL}/128x128.png`,
-      },
-      {
-        name: 'og:image',
-        property: 'og:url',
-        content: `${BASE_URL}/brand-192x192.png`,
-      },
-      {
-        name: 'og:image',
-        property: 'og:url',
-        content: `${BASE_URL}/brand-200x200.png`,
-      },
-      {
-        name: 'og:image',
-        property: 'og:url',
-        content: `${BASE_URL}/brand-512x512.png`,
-      },
-      {
-        name: 'og:image',
-        property: 'og:url',
-        content: `${BASE_URL}/brand-800x800.png`,
-      },
-      {
-        name: 'image',
-        property: 'og:url',
-        content: `${BASE_URL}/brand-1200x600.png`,
-      },
-      { name: 'og:image:alt', property: 'og:url', content: DESCRIPTION },
-      {
-        name: 'twitter:image',
-        property: 'og:url',
-        content: `${BASE_URL}/128x128.png`,
-      },
-      {
-        name: 'google-adsense-account',
-        content: 'ca-pub-4467877923505914',
-      },
+      { name: 'theme-color', content: '#133353' },
+
+      /* Plain meta description (Google search snippet). */
+      { hid: 'description', name: 'description', content: DESCRIPTION },
+
+      /* Open Graph (Slack, Teams, iMessage, Discord, LinkedIn, Facebook). */
+      { hid: 'og:site_name', property: 'og:site_name', content: 'NodeN' },
+      { hid: 'og:type', property: 'og:type', content: 'website' },
+      { hid: 'og:url', property: 'og:url', content: BASE_URL },
+      { hid: 'og:title', property: 'og:title', content: TITLE },
+      { hid: 'og:description', property: 'og:description', content: DESCRIPTION },
+      { hid: 'og:image', property: 'og:image', content: OG_IMAGE },
+      { hid: 'og:image:width', property: 'og:image:width', content: '512' },
+      { hid: 'og:image:height', property: 'og:image:height', content: '512' },
+      { hid: 'og:image:alt', property: 'og:image:alt', content: 'NodeN' },
+
+      /* Twitter / X cards. summary_large_image would prefer a 1200×630
+       * banner; we don't have a branded banner yet, so `summary` keeps
+       * the 512×512 logo as a small square thumbnail. */
+      { hid: 'twitter:card', name: 'twitter:card', content: 'summary' },
+      { hid: 'twitter:title', name: 'twitter:title', content: TITLE },
+      { hid: 'twitter:description', name: 'twitter:description', content: DESCRIPTION },
+      { hid: 'twitter:image', name: 'twitter:image', content: OG_IMAGE },
+      { hid: 'twitter:image:alt', name: 'twitter:image:alt', content: 'NodeN' },
     ],
     link: [
       { rel: 'manifest', href: '/manifest.json' },
