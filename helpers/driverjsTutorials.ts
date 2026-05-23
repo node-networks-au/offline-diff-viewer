@@ -138,10 +138,10 @@ const comparePageV2Tutorials: TutorialMetadata[] = [
 ]
 
 const tutorialsMetadata: TutorialsMetadata = {
-  '/v1/diff': diffV1Tutorials,
-  '/v2/diff': diffV2Tutorials,
-  '/': comparePageV1Tutorials,
-  '/v2': comparePageV2Tutorials,
+  /* /v1 was retired — / and /diff are now the only routes. We
+   * route them at the v2-style tutorial set. */
+  '/': comparePageV2Tutorials,
+  '/diff': diffV2Tutorials,
 }
 
 export default async function showTutorials(

@@ -1,6 +1,6 @@
 <template>
   <footer
-    class="sticky py-4 mt-4 text-center top-full bg-inherit min-h-max"
+    class="sticky pt-4 pb-2 mt-2 text-center top-full bg-inherit min-h-max"
     style="color: var(--noden-text-secondary, #64748b); font-size: 0.85rem;"
   >
     This product includes software developed by

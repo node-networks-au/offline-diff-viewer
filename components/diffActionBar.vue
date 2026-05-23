@@ -1,49 +1,71 @@
 <template>
   <section
     class="
-      flex
-      items-center
-      justify-between
-      px-4
-      py-2
-      mb-4
-      sticky
-      top-[70px]
-      dark:bg-gray-700
-      bg-gray-300
-      dark:bg-opacity-50
-      bg-opacity-50
-      backdrop-blur-sm
-      rounded-md
-      shadow-lg
-      border border-gray-500
-      w-full
-      z-10
+      flex items-center justify-end gap-3 px-4 py-2 mb-4
+      w-full rounded-md shadow-sm border
+      bg-white dark:bg-gray-800
+      border-gray-200 dark:border-gray-700
     "
   >
-    <div class="flex gap-4">
-      <ToggleInSync />
-      <NextDiff :click-handler="goToNextDiff" />
-      <PrevDiff :click-handler="goToPreviousDiff" />
-    </div>
-    <CopyLink :click-handler="copyUrlToClipboard" :copied="copied"></CopyLink>
+    <!-- Layout-toggle on the left of the right cluster; doesn't need
+         to be visually separated since the chrome is a single row. -->
+    <DiffStyle :click-handler="toggleDiffFashion" />
+
+    <!-- Visual divider between layout-toggle and copy-link.  -->
+    <span class="h-6 w-px bg-gray-200 dark:bg-gray-600" aria-hidden="true" />
+
+    <CopyLink :click-handler="copyUrlToClipboard" :copied="copied" />
+
+    <!-- Far-right cluster: previous / next diff navigators as
+         icon-only arrow buttons. -->
+    <span class="h-6 w-px bg-gray-200 dark:bg-gray-600" aria-hidden="true" />
+    <button
+      type="button"
+      class="noden-icon-btn"
+      aria-label="Go to previous diff"
+      title="Previous diff"
+      @click="goToPreviousDiff"
+    >
+      <Up />
+    </button>
+    <button
+      type="button"
+      class="noden-icon-btn"
+      aria-label="Go to next diff"
+      title="Next diff"
+      @click="goToNextDiff"
+    >
+      <Down />
+    </button>
   </section>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
-import PrevDiff from './buttons/prevDiff.vue'
-import ToggleInSync from './buttons/toggleInSync.vue'
-import NextDiff from './buttons/nextDiff.vue'
-import CopyLink from './buttons/copyLink.vue'
-import { putToClipboard } from '~/helpers/utils'
+import CopyLink from '../buttons/copyLink.vue'
+import DiffStyle from '../buttons/diffStyle.vue'
+import Up from '~/components/icons/up.vue'
+import Down from '~/components/icons/down.vue'
+import { SIMPLE_DIFF_CHARACTER_LIMIT } from '~/constants/constants'
+import { E2E_LINK_GENERATION_ERROR } from '~/constants/messages'
+import {
+  getEncryptedData,
+  getEncryptionKey,
+  getExtractedEncryptionKey,
+} from '~/helpers/encrypt'
 import { DiffActionBarData } from '~/helpers/types'
+import { getRandomDiffId } from '~/helpers/utils'
 export default Vue.extend({
-  components: {
-    PrevDiff,
-    NextDiff,
-    ToggleInSync,
-    CopyLink,
+  components: { CopyLink, DiffStyle, Up, Down },
+  props: {
+    diffNavigator: {
+      type: Object,
+      required: true,
+    },
+    onDiffFashion: {
+      type: Function,
+      required: true,
+    },
   },
   data(): DiffActionBarData {
     return {
@@ -55,37 +77,7 @@ export default Vue.extend({
     }
   },
   mounted() {
-    const lhsDiffNode = document.getElementById('lhsDiff')
-    const rhsDiffNode = document.getElementById('rhsDiff')
-    if (lhsDiffNode && rhsDiffNode) {
-      const isLHSBigger =
-        lhsDiffNode.children.length > rhsDiffNode.children.length
-      let comparator, comparer
-      if (isLHSBigger) {
-        comparer = lhsDiffNode
-        comparator = rhsDiffNode
-      } else {
-        comparer = rhsDiffNode
-        comparator = lhsDiffNode
-      }
-      this.comparator = comparator
-      this.treeWalker = document.createTreeWalker(
-        comparer,
-        NodeFilter.SHOW_ELEMENT,
-        {
-          acceptNode: (node: Node) => {
-            if (
-              (node as HTMLDivElement).classList.contains('bg-red-200') ||
-              (node as HTMLDivElement).classList.contains('bg-green-200')
-            ) {
-              return NodeFilter.FILTER_ACCEPT
-            }
-            return NodeFilter.FILTER_REJECT
-          },
-        }
-      )
-      document.addEventListener('keydown', this.handleCtrlC)
-    }
+    document.addEventListener('keydown', this.handleCtrlC)
   },
   beforeDestroy() {
     document.removeEventListener('keydown', this.handleCtrlC)
@@ -104,75 +96,103 @@ export default Vue.extend({
         button.click()
       }
     },
-    copyUrlToClipboard() {
-      putToClipboard(
-        window.location.href,
-        'Link copied to your clipboard',
-        this.$store
-      )
+    /* Copy-link UX: no toast. The button itself transitions
+     * Link → Copied → Link via the `copied` state (see
+     * components/buttons/copyLink.vue). Two paths:
+     *   - small URL → just navigator.clipboard.writeText().
+     *   - URL over SIMPLE_DIFF_CHARACTER_LIMIT → hit the API to mint
+     *     an end-to-end-encrypted short link, copy that. Short link
+     *     is cached on `this.e2eLink` until the labels change (see
+     *     diff.vue's syncLabelsToUrl). */
+    async copyUrlToClipboard() {
+      const longUrl =
+        window.location.href.length > SIMPLE_DIFF_CHARACTER_LIMIT
+      try {
+        if (longUrl && this.e2eLink) {
+          await navigator.clipboard.writeText(this.e2eLink)
+        } else if (longUrl) {
+          await this.copyE2eUrlToClipboard()
+          return
+        } else {
+          await navigator.clipboard.writeText(window.location.href)
+        }
+        this.flashCopied()
+      } catch {
+        this.showErrorToast('Failed to copy link to clipboard')
+      }
+    },
+    async copyE2eUrlToClipboard() {
+      try {
+        this.copied = null /* "Generating..." */
+        const id = getRandomDiffId()
+        const keyBuffer = await getEncryptionKey()
+        const encryptedDataText = await getEncryptedData(
+          window.location.hash.replace(/^#/, ''),
+          keyBuffer
+        )
+        const extractedEncryptionKey = await getExtractedEncryptionKey(
+          keyBuffer
+        )
+        const response = await fetch('/api/createLink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: encryptedDataText,
+            id,
+          }),
+        })
+        const data = await response.json()
+        if (!data.success) {
+          throw new Error(E2E_LINK_GENERATION_ERROR)
+        }
+        const newUrl = new URL(window.location.origin)
+        newUrl.pathname = '/diff'
+        newUrl.hash = `#${extractedEncryptionKey}`
+        newUrl.searchParams.set('id', data.address)
+        await navigator.clipboard.writeText(newUrl.toString())
+        this.e2eLink = newUrl.toString()
+        this.flashCopied()
+      } catch (error: any) {
+        this.copied = false
+        this.showErrorToast(E2E_LINK_GENERATION_ERROR)
+      }
+    },
+    flashCopied() {
       this.copied = true
       setTimeout(() => {
         this.copied = false
-      }, 5000)
+      }, 2000)
     },
     goToNextDiff() {
-      const currentNode = this.treeWalker?.currentNode
-      const nextNode = this.treeWalker?.nextNode()
-      if (nextNode) {
-        const currentNodeIndex = Array.prototype.indexOf.call(
-          currentNode?.parentElement?.children,
-          currentNode
-        )
-        const nextNodeIndex = Array.prototype.indexOf.call(
-          nextNode.parentElement?.children,
-          nextNode
-        )
-        const comparatorCurrentNode =
-          this.comparator?.children[currentNodeIndex]
-        const comparatorNextNode = this.comparator?.children[nextNodeIndex]
-        this.toggleDiffHunkAndScrollIntoView(
-          [
-            currentNode as HTMLDivElement,
-            comparatorCurrentNode as HTMLDivElement,
-          ],
-          [nextNode as HTMLDivElement, comparatorNextNode as HTMLDivElement]
-        )
-      }
+      this.diffNavigator.next()
     },
     goToPreviousDiff() {
-      const currentNode = this.treeWalker?.currentNode
-      const prevNode = this.treeWalker?.previousNode()
-      if (prevNode) {
-        const currentNodeIndex = Array.prototype.indexOf.call(
-          currentNode?.parentElement?.children,
-          currentNode
-        )
-        const prevNodeIndex = Array.prototype.indexOf.call(
-          prevNode.parentElement?.children,
-          prevNode
-        )
-        const comparatorCurrentNode =
-          this.comparator?.children[currentNodeIndex]
-        const comparatorPrevNode = this.comparator?.children[prevNodeIndex]
-        this.toggleDiffHunkAndScrollIntoView(
-          [
-            currentNode as HTMLDivElement,
-            comparatorCurrentNode as HTMLDivElement,
-          ],
-          [prevNode as HTMLDivElement, comparatorPrevNode as HTMLDivElement]
-        )
-      }
+      this.diffNavigator.previous()
     },
-    toggleDiffHunkAndScrollIntoView(
-      unselectedNodes: Array<HTMLDivElement | undefined> = [],
-      selectedNodes: Array<HTMLDivElement | undefined> = []
-    ) {
-      unselectedNodes.forEach((element) => {
-        element?.querySelector('p')?.classList.remove('selected')
-      })
-      selectedNodes.forEach((element) => {
-        element?.querySelector('p')?.classList.add('selected')
-        element?.scrollIntoView()
+    toggleDiffFashion(value: boolean) {
+      this.onDiffFashion(value)
+    },
+    showErrorToast(content: string) {
+      this.$store.commit('toast/show', {
+        show: true,
+        content,
+        iconHTML: `
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              ></path>
+            </svg>
+          `,
+        theme: 'error',
       })
     },
   },
@@ -181,5 +201,42 @@ export default Vue.extend({
 <style lang="scss">
 .copy-uri-button:hover svg {
   @apply rotate-12;
+}
+/* Portal-aligned icon button used by the prev/next nav arrows. */
+.noden-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--noden-border-light, #e5e7eb);
+  background: var(--noden-bg-primary, #ffffff);
+  color: var(--noden-text-primary, #1e3a5f);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.noden-icon-btn:hover {
+  background: var(--noden-primary-light, #dbeafe);
+  border-color: var(--noden-primary, #2563eb);
+  color: var(--noden-primary, #2563eb);
+}
+.noden-icon-btn:active {
+  transform: scale(0.96);
+}
+.noden-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.3);
+}
+.dark .noden-icon-btn {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark .noden-icon-btn:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
 }
 </style>
