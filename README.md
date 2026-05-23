@@ -77,13 +77,21 @@ Live at:
 - **Editable pane labels** above the diff — rename either side and
   the URL hash is regenerated on the fly via `history.replaceState`,
   so the next *Copy link* picks up the new names.
-- **Action bar** has two clusters:
+- **Action bar** sits at the bottom of the page (below the diff
+  shell, above the footer) and has two clusters:
   - Left: **Previous change** / **Next change** labelled pill
     buttons that step through diff hunks.
   - Right: **Copy link** button. Modern in-button success state
     (Link → Copied (green) → Link) — no toast. For long
     payloads the button transitions to a *Generating…* state
     while the API mints an end-to-end-encrypted short link.
+- **Stable shell dimensions** — the diff shell is sized by the
+  flex cascade independent of content. Whether the page is still
+  resolving an encrypted short link, has hit an error, or is
+  showing a fully-rendered diff, the white card occupies the
+  same flex-allocated region of the viewport. The loading /
+  error text is rendered as a centered overlay inside the shell
+  rather than as a separately-sized box.
 - **Per-pane Edit pills** — hover the diff viewer to reveal a
   small *Edit* pill in the top-right of each pane. Clicking either
   one drops you back on the editor with both editors

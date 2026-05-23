@@ -11,10 +11,6 @@
       />
       <Navbar />
       <main class="outline-none" tabindex="0">
-        <DiffActionBar
-          ref="actionBar"
-          :diff-navigator="diffNavigator"
-        />
         <section class="noden-diff-section">
           <!-- Editable per-pane labels. Both panes have an inline
                edit-icon overlay that surfaces on hover (top-right
@@ -37,16 +33,22 @@
             />
           </div>
 
-          <!-- Diff viewer + hover-only edit pills positioned over each
-               pane's top-right. The pills are full-opacity within the
-               container on hover; subtle reveal so they don't compete
-               with the diff content itself. -->
-          <div
-            v-show="!e2eDataStatusText"
-            class="noden-diff-shell"
-          >
-            <div id="monaco-diff-viewer" class="noden-diff-viewer" />
+          <!-- Diff viewer host. The shell is always rendered (so its
+               flex-grown dimensions are identical whether the diff is
+               loading, errored, or fully populated). The Monaco
+               viewport hides behind v-show during e2e loading so the
+               status overlay (centered inside the shell) is the only
+               visible affordance. Edit pills are pinned to the
+               viewport's top-right and gated on the same v-show, so
+               they don't appear over a loading message. -->
+          <div class="noden-diff-shell">
+            <div
+              v-show="!e2eDataStatusText"
+              id="monaco-diff-viewer"
+              class="noden-diff-viewer"
+            />
             <NuxtLink
+              v-show="!e2eDataStatusText"
               :to="editLink"
               class="noden-pane-edit noden-pane-edit-left"
               title="Edit this diff"
@@ -56,6 +58,7 @@
               <span>Edit</span>
             </NuxtLink>
             <NuxtLink
+              v-show="!e2eDataStatusText"
               :to="editLink"
               class="noden-pane-edit noden-pane-edit-right"
               title="Edit this diff"
@@ -64,18 +67,21 @@
               <Pencil />
               <span>Edit</span>
             </NuxtLink>
-          </div>
-
-          <div
-            v-if="e2eDataStatusText"
-            role="alert"
-            aria-busy="true"
-            aria-live="polite"
-            class="noden-diff-status"
-          >
-            <p>{{ e2eDataStatusText }}</p>
+            <div
+              v-if="e2eDataStatusText"
+              role="alert"
+              aria-busy="true"
+              aria-live="polite"
+              class="noden-diff-status-inner"
+            >
+              <p>{{ e2eDataStatusText }}</p>
+            </div>
           </div>
         </section>
+        <DiffActionBar
+          ref="actionBar"
+          :diff-navigator="diffNavigator"
+        />
       </main>
     </div>
     <Footer />
@@ -518,20 +524,20 @@ export default Vue.extend({
   border-color: #2563eb;
 }
 
-.noden-diff-status {
+/* Loading / error overlay rendered INSIDE the shell, so the outer
+ * card dimensions stay identical whether content is loaded or the
+ * page is still resolving an encrypted short link. The status text
+ * is centered inside the shell's flex-grown viewport. */
+.noden-diff-status-inner {
+  position: absolute;
+  inset: 0;
   display: grid;
   place-items: center;
-  width: 100%;
-  min-height: 240px;
   padding: 24px;
-  background: var(--noden-bg-primary, #ffffff);
-  border: 1px solid var(--noden-border-light, #e5e7eb);
-  border-radius: 12px;
   color: var(--noden-text-primary, #1e3a5f);
+  pointer-events: none;
 }
-.dark .noden-diff-status {
-  background: #0f172a;
-  border-color: #374151;
+.dark .noden-diff-status-inner {
   color: #ffffff;
 }
 

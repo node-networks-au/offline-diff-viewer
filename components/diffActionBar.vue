@@ -187,7 +187,11 @@ export default Vue.extend({
   justify-content: space-between;
   gap: 12px;
   padding: 8px 16px;
-  margin-bottom: 16px;
+  /* Action bar sits below the diff shell, so the spacing goes above
+   * it (separating bar from shell). Footer below the bar already has
+   * its own padding. */
+  margin-top: 16px;
+  flex-shrink: 0;
   width: 100%;
   background: var(--noden-bg-primary, #ffffff);
   border: 1px solid var(--noden-border-light, #e5e7eb);
