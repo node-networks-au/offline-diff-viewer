@@ -41,6 +41,17 @@
               <button
                 type="button"
                 class="noden-pane-icon-btn"
+                :class="{ 'is-active': lhsAuto }"
+                :aria-pressed="lhsAuto"
+                aria-label="Auto-detect language for left pane"
+                title="Auto-detect language"
+                @click="autoDetect('lhs')"
+              >
+                <Scan />
+              </button>
+              <button
+                type="button"
+                class="noden-pane-icon-btn"
                 aria-label="Beautify entered text"
                 title="Beautify"
                 @click="lhsEditor && lhsEditor.trigger('editor', 'editor.action.formatDocument')"
@@ -76,6 +87,17 @@
                   :value="opt.id"
                 >{{ opt.label }}</option>
               </select>
+              <button
+                type="button"
+                class="noden-pane-icon-btn"
+                :class="{ 'is-active': rhsAuto }"
+                :aria-pressed="rhsAuto"
+                aria-label="Auto-detect language for right pane"
+                title="Auto-detect language"
+                @click="autoDetect('rhs')"
+              >
+                <Scan />
+              </button>
               <button
                 type="button"
                 class="noden-pane-icon-btn"
@@ -139,9 +161,10 @@ import Footer from '~/components/footer.vue'
 import Bin from '~/components/icons/bin.vue'
 import Forward from '~/components/icons/forward.vue'
 import PrettyCode from '~/components/icons/prettyCode.vue'
+import Scan from '~/components/icons/scan.vue'
 import { DIFF_USER_BLANK_SIDE_ERROR } from '~/constants/messages'
 export default Vue.extend({
-  components: { Navbar, Footer, Bin, Forward, PrettyCode },
+  components: { Navbar, Footer, Bin, Forward, PrettyCode, Scan },
   layout: 'main',
   data() {
     /* Spread the in-memory store so navigating back from /diff
@@ -152,12 +175,22 @@ export default Vue.extend({
       ...this.$store.state.data,
       lhsEditor: null,
       rhsEditor: null,
-      lhsLang: '__auto__',
-      rhsLang: '__auto__',
+      /* Per-pane state:
+       *   lhs/rhsLang   — current Monaco language id shown in the
+       *                   dropdown.
+       *   lhs/rhsAuto   — when true, debounced detect runs on
+       *                   typing/paste; when false, the user has
+       *                   pinned a specific language via the
+       *                   dropdown. Clicking the Auto-detect (scan)
+       *                   button flips it back to true and runs
+       *                   detect once immediately. */
+      lhsLang: 'plaintext',
+      rhsLang: 'plaintext',
+      lhsAuto: true,
+      rhsAuto: true,
       languageOptions: LANGUAGE_OPTIONS,
       /* Reference to the loaded monaco module, populated once
-       * loader.init() resolves. Used by onLangChange to switch
-       * model languages on demand. */
+       * loader.init() resolves. */
       monaco: null as any,
     }
   },
@@ -210,18 +243,20 @@ export default Vue.extend({
       registerCustomLanguages(monaco)
       this.monaco = monaco
       showTutorials(this.$cookies, this.$route.path, this.$cookies.isDarkMode)
-      /* Re-run auto-detect on the named side IFF its dropdown is on
-       * "Auto-detect". When the user pins a specific language we
-       * stop overwriting their choice. */
+      /* Re-run auto-detect on the named side IFF the pane is in
+       * auto mode. Manually pinning a language via the dropdown
+       * flips auto off; clicking the Scan button flips it back on. */
       const reDetect = (side: 'lhs' | 'rhs') => {
         const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
-        const userChoice = side === 'lhs' ? this.lhsLang : this.rhsLang
-        if (!editor || userChoice !== '__auto__') return
+        const isAuto = side === 'lhs' ? this.lhsAuto : this.rhsAuto
+        if (!editor || !isAuto) return
         const value = editor.getValue() || ''
         const lang = detectLanguage(value)
         const model = editor.getModel()
         if (model && monaco.editor.setModelLanguage) {
           monaco.editor.setModelLanguage(model, lang)
+          if (side === 'lhs') this.lhsLang = lang
+          else this.rhsLang = lang
         }
       }
       if (lhs) {
@@ -330,9 +365,9 @@ export default Vue.extend({
       this.lhsLabel = ''
       this.rhsLabel = ''
     },
-    /* Triggered when either pane's syntax dropdown changes. Pinning
-     * a specific language overrides auto-detect for that pane until
-     * the user picks "Auto-detect" again. */
+    /* Picking from the syntax dropdown pins the pane to a manual
+     * language and turns auto-detect off for that pane. Click the
+     * scan icon to re-enable auto-detect. */
     onLangChange(side: 'lhs' | 'rhs') {
       const choice = side === 'lhs' ? this.lhsLang : this.rhsLang
       const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
@@ -340,21 +375,41 @@ export default Vue.extend({
       if (!editor || !monaco) return
       const model = editor.getModel()
       if (!model) return
-      if (choice === '__auto__') {
-        const value = editor.getValue() || ''
-        monaco.editor.setModelLanguage(model, detectLanguage(value))
-      } else {
-        monaco.editor.setModelLanguage(model, choice)
-      }
+      if (side === 'lhs') this.lhsAuto = false
+      else this.rhsAuto = false
+      monaco.editor.setModelLanguage(model, choice)
+    },
+    /* Scan-button handler — re-enables auto mode and runs
+     * detectLanguage against the current content immediately. */
+    autoDetect(side: 'lhs' | 'rhs') {
+      const editor = side === 'lhs' ? this.lhsEditor : this.rhsEditor
+      const monaco = (this as any).monaco
+      if (!editor || !monaco) return
+      const model = editor.getModel()
+      if (!model) return
+      if (side === 'lhs') this.lhsAuto = true
+      else this.rhsAuto = true
+      const lang = detectLanguage(editor.getValue() || '')
+      monaco.editor.setModelLanguage(model, lang)
+      if (side === 'lhs') this.lhsLang = lang
+      else this.rhsLang = lang
     },
   },
 })
 </script>
 
 <style scoped>
+/* Fill-the-window cascade — the page root is flex-column with min
+ * height = viewport; the form claims the remaining space; the
+ * pane-grid is the only flex-grow child so the editors fill all
+ * leftover vertical room (down to a 320px floor on tiny viewports).
+ * min-height: 0 at every step is the magic that lets flex children
+ * actually shrink/grow within their parent. */
 .noden-page {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 1rem;
   margin-top: 1rem;
   padding: 0 0.5rem;
@@ -363,6 +418,8 @@ export default Vue.extend({
 .noden-form {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
   gap: 1rem;
   width: 100%;
 }
@@ -371,6 +428,8 @@ export default Vue.extend({
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 320px;
 }
 @media (max-width: 768px) {
   .noden-panes { grid-template-columns: 1fr; }
@@ -463,6 +522,18 @@ export default Vue.extend({
   border-color: var(--noden-primary, #2563eb);
   color: var(--noden-primary, #2563eb);
 }
+/* `is-active` paints the scan-button blue while auto-detect is the
+ * active mode for that pane; clicking the dropdown turns it off. */
+.noden-pane-icon-btn.is-active {
+  background: var(--noden-primary-light, #dbeafe);
+  border-color: var(--noden-primary, #2563eb);
+  color: var(--noden-primary, #2563eb);
+}
+.dark .noden-pane-icon-btn.is-active {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: #60a5fa;
+  color: #60a5fa;
+}
 .noden-pane-icon-btn :deep(svg) {
   width: 16px;
   height: 16px;
@@ -510,9 +581,8 @@ export default Vue.extend({
 .dark .noden-lang-select:focus { border-color: #60a5fa; }
 
 .noden-editor {
-  flex: 1 1 0;
-  min-height: 400px;
-  max-height: calc(100vh - 18rem);
+  flex: 1 1 auto;
+  min-height: 0; /* allow shrink within flex parent */
   background: var(--noden-bg-primary, #ffffff);
 }
 .dark .noden-editor { background: #0f172a; }

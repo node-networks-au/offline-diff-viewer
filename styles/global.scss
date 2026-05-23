@@ -165,13 +165,23 @@ a:hover {
   min-height: 100vh;
 }
 
+/* Tall layout: navbar at the top, footer at the bottom, the routed
+ * page content claims everything between. main is a flex-column so
+ * its child .noden-page (and that page's flex children) can cascade
+ * `flex: 1` down to the editors and let them fill the viewport. */
 .page-contents {
-  @apply grid;
-  grid-template-rows: 70px 1fr;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
 }
 
 main {
-  @apply flex flex-wrap xl:container;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  @apply xl:container;
   margin-top: 2rem;
 }
 

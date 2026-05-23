@@ -1,135 +1,127 @@
-# offline-diff-viewer
+# NodeN Configuration Diff Viewer
 
-A diff viewer that gives you sharable diff view links but does not store your data. (This takes inspiration from typescript playground how it stores your code in url itself) but the for very large data we will be doing end to end encryption just like `excalidraw` so you can still have sharable links without worrying if you should store your enterprise data or not.
+A privacy-focused, side-by-side configuration/text diff viewer with
+shareable, end-to-end-encrypted links. Forked from
+[technikhil314/offline-diff-viewer](https://github.com/technikhil314/offline-diff-viewer)
+and rebranded for the NodeN platform; the upstream BSD-4 license is
+preserved.
 
-# Data Privacy and security
+Live at:
+- **<https://diff.noden.com.au>** — production
+- **<https://diff.dev.noden.com.au>** — dev
 
-## :bangbang: No data sent to server
+## What's in the fork
 
-- You can take a look at the source code itself.
-- All your data is kept as hash fragment in URL which never makes its way to server. Totally avoiding man in middle and XSS attacks to steal your data or any data breach.
-- The data always stays in your URL and browser and never makes its way on the wire. Thats the main motive behind developing this tool.
-- More about reasoning, why and how can be found in [Motivation](#motivation) section below.
+### Branding & UX
 
-## End to End Encryption
+- **Source-level rebrand** to *NodeN Configuration Diff* — `<title>`,
+  Open Graph + Twitter Card metadata, page manifest, and link-preview
+  imagery all updated. Old upstream `og:url`-on-everything bug fixed
+  so Slack/Teams/iMessage unfurls actually show the right title.
+- **Portal-aligned visual identity** — navy (`#133353`) headings,
+  warm-white (`#faf8fa`) page background, system-font UI chrome,
+  white-card surfaces with soft shadows, accent blue (`#4a9eff`)
+  focus rings. CSS custom properties in `styles/global.scss`.
+- **BSD-4 attribution** in the page footer (bottom-right corner):
+  > *This product includes software developed by Nikhil Mehta.*
+- **Single-route topology** — the upstream's `v1` (textarea-based)
+  and `v2` (Monaco-based) pages are collapsed; `/` is the editor,
+  `/diff` is the viewer. Legacy `/v2` and `/v2/diff` paths still
+  return `301` from the nginx layer so old shared links keep working.
 
-- If the calculated diff data is larger 10000 characters then your data is first encrypted on browser and the encrypted data is stored on server.
-- The key to decrypt the data is added as hash fragment in the url, also each diff view is encrypted with different key
-- Every diff view is assigned cryptographically strong unique identifier making it impossible to guess diff view identifiers for hackers
-- The data is always decrypted in browser cause the hash fragement is never sent to server by browsers, so server has no way to decrypt the data
-- even if someone gets hold of your data using man in middle attack they cannot decrypt it as decryption key is available only in browser.
+### Editor (home page, `/`)
 
-# Formats currently supported
+- **Monaco editors** in two side-by-side cards. Default language is
+  plain text — no JavaScript auto-formatting, no red squiggles, no
+  autocompletes, no hover popovers. It's a paste box, not an IDE.
+- **Per-pane syntax selector** + **scan-to-detect** icon button:
+  - The selector pins a specific Monaco language id.
+  - The scan button flips the pane back to auto-detect mode and
+    runs `detectLanguage()` against current content immediately.
+- **Network-vendor language packs** (registered as Monarch tokenizers
+  in `helpers/customLanguages.ts`):
+  - **Juniper (Junos OS)** — both `set system host-name foo`
+    set-style and `system { host-name foo; }` curly-block; `/* */`
+    and `#` comments; IPv4/IPv6 highlighting; ~10 control verbs.
+  - **Cisco IOS / IOS-XE / NX-OS** — `!` comments;
+    `interface GigabitEthernet0/0` family; routing-protocol
+    (`router bgp`, `router ospf`, `router eigrp`, …),
+    `access-list`, `line vty/con/aux`, ~60 keyword set.
+  - **MikroTik RouterOS** — `/interface bridge add …` path
+    commands, `add/set/remove name=… ` key=value pairs, `#`
+    comments.
+- **Auto-detect heuristics** also cover JSON, YAML, Python,
+  Dockerfile, Shell, HCL/Terraform, XML, SQL.
+- **Editable pane labels** with placeholder text. Per-pane
+  *Beautify* (Monaco's `editor.action.formatDocument`) and
+  *Auto-detect* icon buttons in the pane header.
+- **Full-height editors** — the panes claim all leftover vertical
+  space between the navbar and the bottom controls; empty boxes
+  fill the viewport, not a fixed 400 px well.
 
-1. Any texual format (JSON, HTML, Plain text, JS, CSS and any text based file content)
+### Diff viewer (`/diff`)
 
-# Upcoming support
+- **Side-by-side diff** with a single unified scrollbar — the
+  original-side scrollbar is hidden, the modified-side is a slim
+  8 px scrollbar that drives both panes via Monaco's intra-diff
+  scroll sync. The right-edge overview ruler (change heat-map)
+  stays put.
+- **Editable pane labels** above the diff — rename either side and
+  the URL hash is regenerated on the fly via `history.replaceState`,
+  so the next *Copy link* picks up the new names.
+- **Action bar** has two clusters:
+  - Left: **Previous change** / **Next change** labelled pill
+    buttons that step through diff hunks.
+  - Right: **Copy link** button. Modern in-button success state
+    (Link → Copied (green) → Link) — no toast. For long
+    payloads the button transitions to a *Generating…* state
+    while the API mints an end-to-end-encrypted short link.
+- **Per-pane Edit pills** — hover the diff viewer to reveal a
+  small *Edit* pill in the top-right of each pane. Clicking either
+  one drops you back on the editor with both editors
+  pre-populated (the URL hash carries the payload between routes).
+- **Unified-view toggle removed** — side-by-side is the canonical
+  layout.
 
-1. Images
-2. Audio wave format
+### Container & deployment
 
-## Reason for building yet another diff viewer tool
+- **Multi-stage Dockerfile** baking the Nuxt static export into
+  `nginx:1.27.0-alpine-slim`. No runtime `npm ci && npm run
+  generate` (saves 2 GB peak memory + ~3 min per pod start).
+- **GitHub Actions workflow** in `.github/workflows/build-image.yml`
+  builds + pushes `ghcr.io/node-networks-au/offline-diff-viewer:latest`
+  on every push to `develop`.
+- Pre-built image consumed by both clusters via standard
+  Kubernetes Deployment manifests (KRO RGD on dev,
+  plain-kubectl manifest on prod).
 
-I realise we are missing a diff viewer that is
+## Privacy properties
 
-- Privacy focused
-- Simple to use
-- And most importantly does not store any data on server to give sharable diff urls
+Inherited from upstream and still true:
 
-## Motivation
+- **Short payloads** never leave the browser — `lhs`, `rhs`,
+  `lhsLabel`, `rhsLabel` are gzip + base64-encoded into the URL
+  fragment (`#…`), which browsers don't send to the server.
+- **Long payloads** are AES-encrypted in the browser before any
+  bytes hit the server; the symmetric key lives in the URL
+  fragment too, so the server only ever sees opaque ciphertext.
 
-I realise as a developer community we are missing on a diff viewer tool that does not store your data on their server to give you links to diff view to share with your teams.
-There can be serious implications of storing your enterprise data on some server that you don’t know anything about.
-
-Also current diff tools lack one major ability that is to compare any two text blocks. Many diff viewers out there target specific text types like JSON etc which is not what we want most of the time.
-
-Also due to lack of such tool, if you want to see the the diff again you have to do the following
-
-1. Ask/get the data from someone/somewhere
-2. Search for a diff viewer tool online
-3. Copy paste the data sources to the tool
-4. Compare and share findings
-
-This is still a mechnical part that can be easily automated. But most such tools out there right now store your data to give you sharable diff URLs which was a concerning thing at least for me for security reasons.
-
-The simplest solution in my opinion will be
-
-1. Get the data just once
-2. Search for diff tool online just once
-3. Copy your data to the tool just once
-4. Compare and get a sharable url that stores your data in link itself (Like typescript playground stores your code in link)
-
-In the chase of one such tool I ended up creating one as I did not find any that satisfied my requirements.
-This is open source and has very easy user interface. Here is the link to the tool https://diffviewer.vercel.app/
-It has following benefits
-
-1. Since the tool does not always store your data on its server there is no server required in the tool
-2. The tool is blazing fast
-3. Most importantly the link can be shared with anyone without security concerns(Unless you share link itself over some insecure network)
-4. As the link contains data whomever you share link with can get data too
-5. Also note that the data is put with hash in url so server can not read the data or encryption key
-6. For very large data comparison take a look at [End to End Encryption](#end-to-end-encryption) section above
-
-[Here is sample e2e encrypted link](https://diffviewer.vercel.app/v2/diff?id=permanent-42812281783313231307#d9_okhxt7vhCLB_kXgkKVA)
-
-[Here is a link to sample diff view](https://diffviewer.vercel.app/v2/diff#H4sIAAAAAAAAA6VZTW_bOBD9K4Eve-kS1octqyfmo02w7bbZpmgPm0VBSbTMmCK9FGXXKPrfdyjXRYz1jAvrkMT2kyM_cOa9N-NvI71oRy9Hfz-ai4tv4dfFxeNIVY-jlxfRi_3zuXKt_2JEI8Prj6Nr67yR28fRzyu0OLjgrZx7fXCBbITSO7DUO3TMn8RKmJVtPXtaPbu2lqaSbnfxa3ijls9AtfoiqsrJtt1dECdjFqURy6csTqLHUbju-4sjdGKUzoNwAudyq3y7EM1xLm29QyPeWc1K27DCncskYUnKspTFY4JFgrJ421V2rUqLM3m3lcdZaLOVMV85IzftRjkZiCAs_qQ5RFHGojEcBfyk1GmkKI93wi-EEVLjRB5WaqlM3R5nY9ofcMLD-9j8XC75jGUTKC6glKUElwneKJ3WSuJE3hi5lh5pk2UPprzoWmXgU22kXJ5_MrOIRdOMxTGLcqrApiiZN8JLB58Ep_On8F6KslTHGS2bPT7horCdZ408t1ki6PcogUKLUhaRHZOhhG6ktlTn3_x2DdokjpOpqjKAU76RRUscy2kmaRJOJYfGn1BVNkN5fBBNS6nxnTTOIlXmFj2YcbkSrLbrM1tlBn0yBiGewGkkGcEiR1lcSdERpVW-kcJUx0kUTbkM6IyXRvoh6jWDQwAdhl7JE4JFNEZpvNcKutYTXQJE9XEetgAo5xtr_UI2clBZxWnOpgy6Pk5JJrjLv6qkwVlcrp0A4zuomGdUpNjjgrfeOjXfDmsSKLBsBgUGJ5NTfHCbh9SitKb6HdStRsS4CljBSwsmqTWTVYdQue0fz3WnKoLPZMKynAGhbEaRwd3-k3K10opw-zsJWo0U2nrRgyWvpS2VV1BqaAI71TNjaPlxsMgETodkg3v--0JUSiyInnGqqjUqALbY4xWP4uR3J2uoNtYtz-SUhQQDlTaBP1SKiXDrv9RzJyuSUXsQ1p7REUUPSr618C7lhwSyCRg-yFqUxOCVZOfgzn_jupKKMfd26-GWiFGuduicf3VSDBKBEF4g7kOlxUlMUcE9_952RLC8l8IdBJxnPFarHqx5q8WgEwFhjpMcUsupfsEd_xaEDGdxbRvobu-RGFaXe3wBfmkGncg4Dh0CyRIiDBVeItz3L423RhFO89kutHRIdYnNDlUDrT8O6YVNQoQhh0jc-D_BDYwn8_GlM5B6EUkWPfjEwfqFBynzqhx0NHnOwmgMNpPsA8Cj-Wf0AiLfGRO_Vg2lZWD0Bptjih065q3tTFVq21VD9CxjWcSmkGsSqnnwGPBKK2GsI8cYV2IDPzwMYMT9RkHKc0P1bJaFgMZmk7Nm_qv-c6FqtrUeOZRiFbCYy85ZCP4SSzMntQymMDDL4P0xFTNx6790CgIVcRofnWxAtLExWfg9nvBCW9sU0tWDTiUCbYZ5ZpKd0DTc-x-6Jbkds2v5ZJHtWKt3aMpLrcplIcySmQPyz9lcqf0zgg8LhwSlRh0Qbv6fVBnyO5Gbr-TcYXTWRQ9OIMp0y26ooEUxDGgpI20T9_5rUSpyHXMJtVMJXWOLS7HHp_wrjAODB5ocIgBI9PSsqf8dVEeIh8R2Sco1lsrMsgczDiG1UgOMM0_6PQwMNFS4xO3_TjSUht3BzYDocRKLxQ6d8bkoZWHtgP1YlI_BKCEjh8xPhks8AoQo0ycrosY-i6XUSIGJTQ_mfCsW1g4qr2D9YYsxCwngvPn_AYZETQ1lN8qXi6JzBlGyao8LrkylZG1ritTlSSmDeAYCkMAJJWTYxM3_D0Ho8jU8FebgEzyj81T-gAvu5YAEA0NlNA1b2LDAJAsN9_17ZcqO6PxLv5XIbLkSASu5EWsyvZxgARksisPSDwqMJIE7f78tJhYYH2wrN0IjK4zG_YArvlZGWEeNlqfJTAKXlJEhhpj2byFTEt9XeCeMqBcC6ZS6_XmB5GHebyQdLX9l6B8HHWMJZS7EyN9PM0vC9P_q5FYqh1TZ-t8f8PxXdhgn5SwFMsEpwTTJ1E8M_g8gQZLaynaulpiSFT1Y8wpe2obXye3SLwR_NgVGccRm1DcXxALgtXXw7_yBVv1_Y64cjNbHKc2bctnDC-4778MW0AumsJx5ouBCBoB0Bn2UnrkFeBBOUqPzlWhbhUhBW_Sg-qXV324_C-VJOg0kgVm6W5qRXy4R-4BrLRxhNrdwPyyclXUPPvFWylYIIv-f_hoA9Dmd9SvAeHy4B9CL9i0kWj16OXrvVA0iqi8-yq9-tyLYQ9cgSrWsdsj3_wBPobtqMCAAAA)
-
-## TODO/Upcoming features
-
-Please check all To dos and upcoming things [here](https://github.com/technikhil314/offline-diff-viewer/projects/1)
-
-## Build Setup
-
-```bash
-# install dependencies
-$ npm install
-
-# serve with hot reload at localhost:3000
-# Note that the command below will serve only via nuxt server and
-# wont run vercel functions used for e2e encryption link generation
-$ npm run dev
-
-# if you want to run vercel function during development
-# then first create a vercel project from this repo by logging in on vercel.com
-# then run following command and follow the instructions on terminal
-$ npx vercel dev
-
-# build for production and launch server
-$ npm run build
-$ npm run start
-
-# generate static project
-$ npm run generate
-```
-
-## Self Host
-
-This guide provides detailed instructions on how to self-host the offline-diff-viewer application using Docker and Docker Compose. Self-hosting allows you to run the application on your own server, providing you with full control over its environment and configuration.
-
-### Building and Running the Docker Container
-
-1. Build the Docker Image
+## Building locally
 
 ```bash
-$ docker build -t offline-diff-viewer .
+npm ci
+npm run dev          # nuxt dev on :3000
+npm run generate     # static build into ./dist
 ```
 
-2. Run the Docker Container via docker run command
+## Upstream
 
-```bash
-$ docker run -d \
-  --name offline-diff-viewer \
-  -p 3000:80 \
-  --security-opt no-new-privileges:true \
-  -v /var/log/nginx:/var/log/nginx \
-  --restart unless-stopped \
-  -e NODE_ENV=production \
-  -e NODE_OPTIONS=--openssl-legacy-provider \
-  offline-diff-viewer
-```
+This is a fork. Upstream:
+<https://github.com/technikhil314/offline-diff-viewer> — BSD 4-clause,
+© 2022 Nikhil Mehta. Substantive UI changes are in this fork; the
+diff engine is upstream Monaco.
 
-### Running the Container with Docker Compose
+## License
 
-```bash
-$ docker compose up -d --build
-```
+BSD 4-clause (see `LICENSE`). The advertising clause is satisfied by
+the bottom-right attribution in the rendered page footer.
