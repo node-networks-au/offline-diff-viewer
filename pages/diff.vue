@@ -269,6 +269,14 @@ export default Vue.extend({
               wordWrap: 'on',
               diffAlgorithm: 'advanced',
               renderSideBySide: true, // unified view removed; SxS only
+              /* Monaco needs a definite container height to lay out
+               * its inner editors. With the flex-cascade making the
+               * shell sized late, layout-on-create can latch onto a
+               * zero-height container and render nothing visible.
+               * automaticLayout polls every ~100ms and calls layout()
+               * when the container resizes, which is exactly the
+               * flex-grow behaviour we have on the shell. */
+              automaticLayout: true,
               // Modernize the right-edge overview ruler (heat-map of
               // changes). Without a border it merges into the editor
               // chrome; 8-px slim scrollbar matches the portal-aligned
@@ -385,8 +393,13 @@ export default Vue.extend({
  * looks like one of the editor panes from the home page. */
 .noden-diff-shell {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 320px;
+  /* `0` basis so the shell can shrink under tight viewports without
+   * forcing the page taller than 100vh. min-height keeps a small
+   * floor on readability; max-height caps growth so the shell
+   * never escapes the viewport. */
+  flex: 1 1 0;
+  min-height: 240px;
+  max-height: calc(100vh - 12rem);
   width: 100%;
   background: var(--noden-bg-primary, #ffffff);
   border: 1px solid var(--noden-border-light, #e5e7eb);

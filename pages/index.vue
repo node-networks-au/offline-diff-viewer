@@ -263,6 +263,7 @@ export default Vue.extend({
           ...monacoEditorOptions,
           value: this.lhs || '',
           wordWrap: 'on',
+          automaticLayout: true,
         })
         reDetect('lhs')
         this.lhsEditor.onDidPaste(() => reDetect('lhs'))
@@ -277,6 +278,7 @@ export default Vue.extend({
           ...monacoEditorOptions,
           value: this.rhs || '',
           wordWrap: 'on',
+          automaticLayout: true,
         })
         reDetect('rhs')
         this.rhsEditor.onDidPaste(() => reDetect('rhs'))
@@ -430,8 +432,13 @@ export default Vue.extend({
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   width: 100%;
-  flex: 1 1 auto;
-  min-height: 320px;
+  /* `0` basis so the grid shrinks under tight viewports rather
+   * than pushing the page past 100vh. Cap with max-height so the
+   * editors never escape the viewport, regardless of how much
+   * chrome is above or below them. */
+  flex: 1 1 0;
+  min-height: 240px;
+  max-height: calc(100vh - 12rem);
 }
 @media (max-width: 768px) {
   .noden-panes { grid-template-columns: 1fr; }
