@@ -9,28 +9,18 @@
         inert
         :value="onThemeChange"
       />
-      <Navbar :show-back-button="true" />
+      <Navbar />
       <main class="outline-none" tabindex="0">
         <DiffActionBar
           ref="actionBar"
           :diff-navigator="diffNavigator"
-          :on-diff-fashion="toggleDiffFashion"
         />
-        <section
-          class="flex flex-wrap gap-4 items-stretch w-full text-gray-800 dark:text-gray-50"
-        >
-          <!-- Editable per-pane labels. The original render shipped
-               these as <p> elements; users now want to rename each
-               side after the diff is loaded. We bind via v-model
-               directly to the page-level reactive lhsLabel/rhsLabel
-               so any subsequent share-link generation picks up the
-               updated names too. -->
-          <div
-            :class="{
-              'flex w-full gap-4 items-center transition-opacity': true,
-              'opacity-0': !isSideBySideDiff,
-            }"
-          >
+        <section class="noden-diff-section">
+          <!-- Editable per-pane labels. Both panes have an inline
+               edit-icon overlay that surfaces on hover (top-right
+               of each pane), so users can hop back to the editor
+               without leaving the diff context. -->
+          <div class="noden-diff-labels">
             <input
               v-model="lhsLabel"
               type="text"
@@ -46,21 +36,44 @@
               aria-label="Right pane label"
             />
           </div>
+
+          <!-- Diff viewer + hover-only edit pills positioned over each
+               pane's top-right. The pills are full-opacity within the
+               container on hover; subtle reveal so they don't compete
+               with the diff content itself. -->
           <div
             v-show="!e2eDataStatusText"
-            id="monaco-diff-viewer"
-            class="p-2 w-full h-screen rounded-md border border-gray-600 editor"
-          ></div>
+            class="noden-diff-shell"
+          >
+            <div id="monaco-diff-viewer" class="noden-diff-viewer" />
+            <NuxtLink
+              :to="editLink"
+              class="noden-pane-edit noden-pane-edit-left"
+              title="Edit this diff"
+              aria-label="Edit left pane"
+            >
+              <Pencil />
+              <span>Edit</span>
+            </NuxtLink>
+            <NuxtLink
+              :to="editLink"
+              class="noden-pane-edit noden-pane-edit-right"
+              title="Edit this diff"
+              aria-label="Edit right pane"
+            >
+              <Pencil />
+              <span>Edit</span>
+            </NuxtLink>
+          </div>
+
           <div
             v-if="e2eDataStatusText"
             role="alert"
             aria-busy="true"
             aria-live="polite"
-            class="grid place-items-center p-2 w-full h-screen rounded-md border border-gray-600  editor"
+            class="noden-diff-status"
           >
-            <h1 class="text-xl font-bold text-center">
-              {{ e2eDataStatusText }}
-            </h1>
+            <p>{{ e2eDataStatusText }}</p>
           </div>
         </section>
       </main>
@@ -83,6 +96,7 @@ import { registerCustomLanguages } from '../helpers/customLanguages'
 import DiffActionBar from '~/components/diffActionBar.vue'
 import Footer from '~/components/footer.vue'
 import Navbar from '~/components/navbar.vue'
+import Pencil from '~/components/icons/pencil.vue'
 import { getDecryptedText, getDepryctionKey } from '~/helpers/decrypt'
 import { v2DiffData } from '~/helpers/types'
 import {
@@ -95,7 +109,7 @@ import {
 } from '~/constants/messages'
 import showTutorials from '~/helpers/driverjsTutorials'
 export default Vue.extend({
-  components: { DiffActionBar, Navbar, Footer },
+  components: { DiffActionBar, Navbar, Footer, Pencil },
   layout: 'main',
   data(): v2DiffData {
     return {
@@ -105,7 +119,7 @@ export default Vue.extend({
       lhsLabel: '',
       monacoDiffEditor: {},
       diffNavigator: {},
-      isSideBySideDiff: true,
+      isSideBySideDiff: true, // retained for typing compatibility; locked true
       e2eDataStatusText: '',
     }
   },
@@ -119,6 +133,13 @@ export default Vue.extend({
       const theme = this.$store.state.theme.darkMode ? 'vs-dark' : 'light'
       this.monacoDiffEditor?.updateOptions?.({ theme })
       return this.$store.state.theme.darkMode
+    },
+    /* Per-panel edit pills point back to the editor home carrying
+     * the current diff hash, so the editors mount pre-populated for
+     * re-edit. SSR-safe (no window access during static generation). */
+    editLink(): any {
+      if (typeof window === 'undefined') return { path: '/' }
+      return { path: '/', hash: window.location.hash || undefined }
     },
   },
   watch: {
@@ -158,12 +179,10 @@ export default Vue.extend({
     }
   },
   methods: {
-    toggleDiffFashion(value: boolean) {
-      this.monacoDiffEditor?.updateOptions?.({ renderSideBySide: value })
-      this.isSideBySideDiff = value
-    },
-    // swapDiffContent removed — the swap button is gone from the
-    // action bar (users found it confusing on read-only diffs).
+    // toggleDiffFashion removed — the unified-view toggle is gone
+    // from the action bar; the side-by-side render is canonical.
+    // swapDiffContent removed earlier (users found it confusing on
+    // read-only diffs).
 
     /* Re-encode the current lhs/rhs/lhsLabel/rhsLabel payload into
      * the URL hash. Mirrors the gzip+base64 encoding the entry page
@@ -249,23 +268,51 @@ export default Vue.extend({
               readOnly: true,
               wordWrap: 'on',
               diffAlgorithm: 'advanced',
+              renderSideBySide: true, // unified view removed; SxS only
               // Modernize the right-edge overview ruler (heat-map of
               // changes). Without a border it merges into the editor
-              // chrome; 12-px-wide scrollbar + rounded handles match
-              // the portal-aligned visual weight.
+              // chrome; 8-px slim scrollbar matches the portal-aligned
+              // visual weight.
               overviewRulerBorder: false,
-              overviewRulerLanes: 3,
+              overviewRulerLanes: 2,
               scrollbar: {
                 useShadows: false,
-                verticalScrollbarSize: 12,
-                horizontalScrollbarSize: 12,
-                verticalSliderSize: 12,
-                horizontalSliderSize: 12,
+                verticalScrollbarSize: 8,
+                horizontalScrollbarSize: 8,
+                verticalSliderSize: 8,
+                horizontalSliderSize: 8,
               },
               renderLineHighlight: 'none',
               renderOverviewRuler: true,
             }
           ) as any
+          if (this.monacoDiffEditor) {
+            /* Dedupe per-pane scrollbars: hide the original pane's
+             * vertical scrollbar entirely and keep a slim 8px
+             * scrollbar on the modified pane. Both panes scroll in
+             * lock-step thanks to Monaco's intra-diff sync, so a
+             * single bar drives both. */
+            try {
+              this.monacoDiffEditor.getOriginalEditor().updateOptions({
+                scrollbar: {
+                  vertical: 'hidden',
+                  verticalScrollbarSize: 0,
+                  verticalSliderSize: 0,
+                },
+              })
+              this.monacoDiffEditor.getModifiedEditor().updateOptions({
+                scrollbar: {
+                  vertical: 'auto',
+                  verticalScrollbarSize: 8,
+                  verticalSliderSize: 8,
+                  useShadows: false,
+                },
+              })
+            } catch (_e) {
+              /* Older Monaco builds without getOriginal/getModified
+               * keep the default per-pane scrollbars; harmless. */
+            }
+          }
           if (this.monacoDiffEditor) {
             // Auto-detect the language for each side independently so
             // YAML vs YAML diffs get YAML highlighting, Python vs
@@ -308,6 +355,127 @@ export default Vue.extend({
 </script>
 
 <style>
+.noden-diff-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  color: var(--noden-text-body, #2d2a2e);
+}
+.dark .noden-diff-section { color: #f9fafb; }
+
+.noden-diff-labels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+}
+
+/* Diff viewer container — host for the Monaco diff editor + the two
+ * hover-revealed edit pills. Rounded card surface so the viewer
+ * looks like one of the editor panes from the home page. */
+.noden-diff-shell {
+  position: relative;
+  width: 100%;
+  background: var(--noden-bg-primary, #ffffff);
+  border: 1px solid var(--noden-border-light, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: var(--noden-card-shadow, 0 2px 8px rgba(45, 42, 46, 0.08));
+  overflow: hidden;
+}
+.dark .noden-diff-shell {
+  background: #0f172a;
+  border-color: #374151;
+}
+.noden-diff-viewer {
+  width: 100%;
+  height: calc(100vh - 14rem);
+  min-height: 480px;
+}
+
+/* Per-pane edit pill. Two of them: left pill anchors to the right
+ * edge of the original (left) half of the diff, right pill anchors
+ * to the right edge of the modified (right) half. Both navigate
+ * back to / with the diff hash so the home page mounts with the
+ * editors pre-populated for re-editing. Hover on the diff shell
+ * fades them in; they stay just-visible at rest so the affordance
+ * is discoverable but never competes with the diff content. */
+.noden-pane-edit {
+  position: absolute;
+  top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--noden-text-secondary, #64748b);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--noden-border-light, #e5e7eb);
+  border-radius: 999px;
+  text-decoration: none;
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s,
+    border-color 0.15s, transform 0.1s;
+  z-index: 2;
+}
+.noden-pane-edit :deep(svg) {
+  width: 12px;
+  height: 12px;
+}
+.noden-diff-shell:hover .noden-pane-edit,
+.noden-pane-edit:focus-visible {
+  opacity: 1;
+}
+.noden-pane-edit:hover {
+  background: var(--noden-primary, #2563eb);
+  color: #ffffff;
+  border-color: var(--noden-primary, #2563eb);
+}
+.noden-pane-edit:active {
+  transform: scale(0.96);
+}
+.noden-pane-edit-left {
+  /* Sits at the right edge of the original (left) half. Monaco's
+   * diff editor splits the viewport ~50/50 in side-by-side mode;
+   * the original pane includes the central gutter so we position
+   * a hair to the left of the 50% mark to avoid clipping. */
+  right: calc(50% + 12px);
+}
+.noden-pane-edit-right {
+  /* Far right of the modified (right) half, just inside the slim
+   * 8px scrollbar. */
+  right: 16px;
+}
+.dark .noden-pane-edit {
+  background: rgba(31, 41, 55, 0.85);
+  color: #d1d5db;
+  border-color: #374151;
+}
+.dark .noden-pane-edit:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.noden-diff-status {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 240px;
+  padding: 24px;
+  background: var(--noden-bg-primary, #ffffff);
+  border: 1px solid var(--noden-border-light, #e5e7eb);
+  border-radius: 12px;
+  color: var(--noden-text-primary, #1e3a5f);
+}
+.dark .noden-diff-status {
+  background: #0f172a;
+  border-color: #374151;
+  color: #ffffff;
+}
+
 .editor {
   max-height: max(500px, calc(100vh - 17rem));
 }

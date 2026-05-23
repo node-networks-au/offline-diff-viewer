@@ -6,19 +6,8 @@
         <Brand />
       </NuxtLink>
 
-      <!-- "Edit this diff" appears only on the diff page. Carries the
-           current diff hash into the home route so the editors mount
-           pre-populated for re-editing. -->
-      <NuxtLink
-        v-if="showBackButton"
-        :to="editLink"
-        class="noden-nav-link"
-        title="Edit this diff"
-      >
-        <Back />
-        <span>Edit</span>
-      </NuxtLink>
-
+      <!-- "Edit this diff" now lives as per-pane hover pills inside
+           the diff viewer itself, so the navbar stays clean. -->
       <slot name="left" />
       <div class="flex-1"></div>
       <slot name="right" />
@@ -45,25 +34,12 @@ import Brand from '~/components/icons/brand.vue'
 let darkMode: Boolean | null = null
 export default Vue.extend({
   components: { Sun, Moon, Back, Brand },
-  props: {
-    showBackButton: {
-      type: Boolean,
-      default: false,
-    },
-  },
   data() {
     return { darkMode }
   },
   computed: {
     brandLink(): string {
       return '/'
-    },
-    editLink(): any {
-      /* Carry the current diff hash back to the editor so users can
-       * tweak content / labels and re-submit instead of starting
-       * from a blank page. SSR-safe (no `window` access here). */
-      if (typeof window === 'undefined') return { path: '/' }
-      return { path: '/', hash: window.location.hash || undefined }
     },
   },
   mounted() {
