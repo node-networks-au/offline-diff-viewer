@@ -12,6 +12,7 @@
       <Navbar :show-back-button="true" />
       <main class="outline-none" tabindex="0">
         <DiffActionBar
+          ref="actionBar"
           :diff-navigator="diffNavigator"
           :on-diff-fashion="toggleDiffFashion"
         />
@@ -75,6 +76,7 @@ import Vue from 'vue'
 import {
   getMonacoEditorDefaultOptions,
   undoUrlSafeBase64,
+  doUrlSafeBase64,
   detectLanguage,
 } from '../../helpers/utils'
 import DiffActionBar from '~/components/v2/diffActionBar.vue'
@@ -118,6 +120,20 @@ export default Vue.extend({
       return this.$store.state.theme.darkMode
     },
   },
+  watch: {
+    /* When the user renames either pane label, regenerate the URL
+     * hash (which encodes lhs/rhs/lhsLabel/rhsLabel) and replace it
+     * in the address bar via history.replaceState (no navigation).
+     * The next copy-link / share-link picks up the new labels.
+     * Cached E2E short-link is cleared so it gets re-issued against
+     * the new payload. */
+    lhsLabel() {
+      this.syncLabelsToUrl()
+    },
+    rhsLabel() {
+      this.syncLabelsToUrl()
+    },
+  },
   beforeMount() {
     if (!window.location.search.includes('id=')) {
       const _diff = this.$route.hash
@@ -147,6 +163,40 @@ export default Vue.extend({
     },
     // swapDiffContent removed — the swap button is gone from the
     // action bar (users found it confusing on read-only diffs).
+
+    /* Re-encode the current lhs/rhs/lhsLabel/rhsLabel payload into
+     * the URL hash. Mirrors the gzip+base64 encoding the entry page
+     * does on Compare; uses replaceState so we don't push a new
+     * history entry every keystroke. Skips when the page is being
+     * driven by a server-stored short link (the ?id= query path) —
+     * in that case the cached e2eLink would be stale and we let it
+     * regenerate next copy. */
+    syncLabelsToUrl() {
+      try {
+        const lhs = String(this.lhs || '').trim()
+        const rhs = String(this.rhs || '').trim()
+        const payload = JSON.stringify({
+          lhs,
+          rhs,
+          lhsLabel: this.lhsLabel,
+          rhsLabel: this.rhsLabel,
+        })
+        const gzip = Buffer.from(pako.gzip(payload)).toString('base64')
+        const hash = `#${doUrlSafeBase64(gzip)}`
+        const url = window.location.search.includes('id=')
+          ? window.location.pathname + window.location.search + hash
+          : window.location.pathname + hash
+        window.history.replaceState(null, '', url)
+        // Reset the action-bar's cached E2E link so the next copy
+        // generates a new server-side payload that reflects the
+        // updated labels.
+        const ab: any = this.$refs.actionBar
+        if (ab && 'e2eLink' in ab) ab.e2eLink = null
+      } catch (_e) {
+        /* If anything in the encode path fails, leave the URL alone;
+         * the user can still click Compare again to regenerate. */
+      }
+    },
     async getE2EData() {
       this.e2eDataStatusText = E2E_DATA_LOADING_INFO
       const url = new URL(window.location.href)

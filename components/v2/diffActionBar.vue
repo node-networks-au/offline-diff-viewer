@@ -47,18 +47,14 @@ import DiffStyle from '../buttons/diffStyle.vue'
 import Up from '~/components/icons/up.vue'
 import Down from '~/components/icons/down.vue'
 import { SIMPLE_DIFF_CHARACTER_LIMIT } from '~/constants/constants'
-import {
-  E2E_LINK_GENERATION_ERROR,
-  E2E_LINK_GENERATION_SUCCESS,
-  LINK_COPY_SUCCESS,
-} from '~/constants/messages'
+import { E2E_LINK_GENERATION_ERROR } from '~/constants/messages'
 import {
   getEncryptedData,
   getEncryptionKey,
   getExtractedEncryptionKey,
 } from '~/helpers/encrypt'
 import { DiffActionBarData } from '~/helpers/types'
-import { getRandomDiffId, putToClipboard } from '~/helpers/utils'
+import { getRandomDiffId } from '~/helpers/utils'
 export default Vue.extend({
   components: { CopyLink, DiffStyle, Up, Down },
   props: {
@@ -100,24 +96,34 @@ export default Vue.extend({
         button.click()
       }
     },
-    copyUrlToClipboard() {
-      const isCurrentUrlExceedsCharacterLimit =
+    /* Copy-link UX: no toast. The button itself transitions
+     * Link → Copied → Link via the `copied` state (see
+     * components/buttons/copyLink.vue). Two paths:
+     *   - small URL → just navigator.clipboard.writeText().
+     *   - URL over SIMPLE_DIFF_CHARACTER_LIMIT → hit the API to mint
+     *     an end-to-end-encrypted short link, copy that. Short link
+     *     is cached on `this.e2eLink` until the labels change (see
+     *     v2/diff.vue's syncLabelsToUrl). */
+    async copyUrlToClipboard() {
+      const longUrl =
         window.location.href.length > SIMPLE_DIFF_CHARACTER_LIMIT
-      if (isCurrentUrlExceedsCharacterLimit && this.e2eLink) {
-        putToClipboard(this.e2eLink, LINK_COPY_SUCCESS, this.$store)
-      } else if (isCurrentUrlExceedsCharacterLimit) {
-        this.copyE2eUrlToClipboard()
-      } else {
-        putToClipboard(window.location.href, LINK_COPY_SUCCESS, this.$store)
-        this.copied = true
-        setTimeout(() => {
-          this.copied = false
-        }, 5000)
+      try {
+        if (longUrl && this.e2eLink) {
+          await navigator.clipboard.writeText(this.e2eLink)
+        } else if (longUrl) {
+          await this.copyE2eUrlToClipboard()
+          return
+        } else {
+          await navigator.clipboard.writeText(window.location.href)
+        }
+        this.flashCopied()
+      } catch {
+        this.showErrorToast('Failed to copy link to clipboard')
       }
     },
     async copyE2eUrlToClipboard() {
       try {
-        this.copied = null
+        this.copied = null /* "Generating..." */
         const id = getRandomDiffId()
         const keyBuffer = await getEncryptionKey()
         const encryptedDataText = await getEncryptedData(
@@ -129,9 +135,7 @@ export default Vue.extend({
         )
         const response = await fetch('/api/createLink', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             data: encryptedDataText,
             id,
@@ -145,23 +149,19 @@ export default Vue.extend({
         newUrl.pathname = '/v2/diff'
         newUrl.hash = `#${extractedEncryptionKey}`
         newUrl.searchParams.set('id', data.address)
-        putToClipboard(
-          newUrl.toString(),
-          E2E_LINK_GENERATION_SUCCESS,
-          this.$store
-        )
+        await navigator.clipboard.writeText(newUrl.toString())
         this.e2eLink = newUrl.toString()
-        this.copied = true
-        setTimeout(() => {
-          this.copied = false
-        }, 5000)
+        this.flashCopied()
       } catch (error: any) {
+        this.copied = false
         this.showErrorToast(E2E_LINK_GENERATION_ERROR)
-      } finally {
-        setTimeout(() => {
-          this.copied = false
-        }, 5000)
       }
+    },
+    flashCopied() {
+      this.copied = true
+      setTimeout(() => {
+        this.copied = false
+      }, 2000)
     },
     goToNextDiff() {
       this.diffNavigator.next()
