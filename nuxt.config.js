@@ -9,7 +9,7 @@ const DESCRIPTION =
 export default {
   ssr: false,
   head: {
-    title: `${TITLE_DESCRIPTION} | Diff Viewer`,
+    title: 'NodeN Configuration Diff',
     script: [
       {
         src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4467877923505914',

@@ -98,7 +98,7 @@ export default Vue.extend({
   },
   head() {
     return {
-      title: 'Diff view | Diff Viewer',
+      title: 'NodeN Configuration Diff',
     }
   },
   computed: {
