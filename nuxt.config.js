@@ -1,11 +1,12 @@
 import path from 'path'
 import MonacoWebpackPlugin from 'monaco-editor-webpack-plugin'
 
-const BASE_URL = 'https://diffviewer.vercel.app'
-const TITLE_DESCRIPTION =
-  'A tool that helps you compare, differentiate, analyze, visualize text online'
-const DESCRIPTION =
-  'A privacy focused tool and/or utility that allows you to compare/analyze/contrast/differentiate/visualize/analyze pieces of texts'
+const BASE_URL = 'https://diff.noden.com.au'
+// Used by all og:* / twitter:* / meta-description tags below. This is
+// the string that shows up in Slack / Teams / iMessage / Twitter link
+// previews and Google snippets.
+const DESCRIPTION = 'NodeN Diff Viewer'
+const TITLE_DESCRIPTION = DESCRIPTION
 export default {
   ssr: false,
   head: {
