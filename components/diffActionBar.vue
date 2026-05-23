@@ -42,8 +42,8 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import CopyLink from '../buttons/copyLink.vue'
-import DiffStyle from '../buttons/diffStyle.vue'
+import CopyLink from './buttons/copyLink.vue'
+import DiffStyle from './buttons/diffStyle.vue'
 import Up from '~/components/icons/up.vue'
 import Down from '~/components/icons/down.vue'
 import { SIMPLE_DIFF_CHARACTER_LIMIT } from '~/constants/constants'
