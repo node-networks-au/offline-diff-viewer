@@ -18,24 +18,26 @@
         </NuxtLink>
       </div>
 
-      <div class="flex items-center justify-between flex-1">
-        <div class="items-center w-1/2">
-          <slot name="left" />
-        </div>
-        <div class="flex items-center justify-end w-1/2 gap-4">
-          <slot name="right" />
-          <button
-            type="button"
-            class="inline-flex items-center justify-center ml-4 bg-transparent border-2 border-gray-700 rounded-full shadow-lg  w-9 h-9 active:scale-y-75 hover:scale-105 hover:shadow-lg"
-            :aria-label="
-              darkMode ? 'Switch to light theme' : 'Switch to dark theme'
-            "
-            @click="toggleDarkMode"
-          >
-            <Moon v-if="darkMode" />
-            <Sun v-if="!darkMode" />
-          </button>
-        </div>
+      <div class="flex items-center flex-1 gap-4">
+        <!-- Optional left-side content (back button on diff page slots
+             into the dedicated #backToDataLink wrapper above; this
+             named slot is kept for any future inline content next to
+             the brand). -->
+        <slot name="left" />
+        <!-- Spacer pushes the right-aligned controls to the edge. -->
+        <div class="flex-1"></div>
+        <slot name="right" />
+        <button
+          type="button"
+          class="inline-flex items-center justify-center bg-transparent border-2 border-gray-700 rounded-full shadow-lg w-9 h-9 active:scale-y-75 hover:scale-105 hover:shadow-lg"
+          :aria-label="
+            darkMode ? 'Switch to light theme' : 'Switch to dark theme'
+          "
+          @click="toggleDarkMode"
+        >
+          <Moon v-if="darkMode" />
+          <Sun v-if="!darkMode" />
+        </button>
       </div>
     </div>
   </nav>

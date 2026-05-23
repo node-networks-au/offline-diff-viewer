@@ -113,6 +113,7 @@ import loader from '@monaco-editor/loader'
 import {
   doUrlSafeBase64,
   getMonacoEditorDefaultOptions,
+  detectLanguage,
 } from '../../helpers/utils'
 import showTutorials from '../../helpers/driverjsTutorials'
 import Navbar from '~/components/v2/navbar.vue'
@@ -148,11 +149,29 @@ export default Vue.extend({
     const monacoEditorOptions = getMonacoEditorDefaultOptions(theme)
     loader.init().then((monaco) => {
       showTutorials(this.$cookies, this.$route.path, this.$cookies.isDarkMode)
+      const reDetect = (editor: any) => {
+        if (!editor) return
+        const value = editor.getValue() || ''
+        const lang = detectLanguage(value)
+        const model = editor.getModel()
+        if (model && monaco.editor.getModel) {
+          monaco.editor.setModelLanguage(model, lang)
+        }
+      }
       if (lhs) {
         this.lhsEditor = monaco.editor.create(lhs, {
           ...monacoEditorOptions,
           value: this.lhs || '',
           wordWrap: 'on',
+        })
+        reDetect(this.lhsEditor)
+        this.lhsEditor.onDidPaste(() => reDetect(this.lhsEditor))
+        // Light auto-detect when input stops changing; cheap regexes
+        // so debounce isn't strictly required, but keep it bounded.
+        let lhsTimer: any = null
+        this.lhsEditor.onDidChangeModelContent(() => {
+          clearTimeout(lhsTimer)
+          lhsTimer = setTimeout(() => reDetect(this.lhsEditor), 300)
         })
       }
       if (rhs) {
@@ -160,6 +179,13 @@ export default Vue.extend({
           ...monacoEditorOptions,
           value: this.rhs || '',
           wordWrap: 'on',
+        })
+        reDetect(this.rhsEditor)
+        this.rhsEditor.onDidPaste(() => reDetect(this.rhsEditor))
+        let rhsTimer: any = null
+        this.rhsEditor.onDidChangeModelContent(() => {
+          clearTimeout(rhsTimer)
+          rhsTimer = setTimeout(() => reDetect(this.rhsEditor), 300)
         })
       }
     })
@@ -244,16 +270,14 @@ export default Vue.extend({
 
 <style scoped>
 main {
-  @apply grid gap-2;
-
+  @apply flex flex-col gap-2;
+  /* Grid layout previously reserved a 60-100px row for the hero
+   * header; with the header removed we just let the form claim the
+   * full vertical run. */
   margin-top: 1rem;
-  grid-template-rows: 100px 1fr;
-  @media screen and (min-width: 768px) {
-    grid-template-rows: 60px 1fr;
-  }
 }
 .editor,
 .editor-wrapper {
-  max-height: max(500px, calc(100vh - 18rem));
+  max-height: max(500px, calc(100vh - 14rem));
 }
 </style>

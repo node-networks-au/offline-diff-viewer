@@ -66,6 +66,7 @@ import Vue from 'vue'
 import {
   getMonacoEditorDefaultOptions,
   undoUrlSafeBase64,
+  detectLanguage,
 } from '../../helpers/utils'
 import DiffActionBar from '~/components/v2/diffActionBar.vue'
 import Footer from '~/components/v2/footer.vue'
@@ -203,9 +204,13 @@ export default Vue.extend({
             }
           ) as any
           if (this.monacoDiffEditor) {
+            // Auto-detect the language for each side independently so
+            // YAML vs YAML diffs get YAML highlighting, Python vs
+            // Python gets Python, etc. Falls back to plaintext when
+            // neither side matches a known shape.
             this.monacoDiffEditor.setModel({
-              original: monaco.editor.createModel(this.lhs, 'javascript'),
-              modified: monaco.editor.createModel(this.rhs, 'javascript'),
+              original: monaco.editor.createModel(this.lhs, detectLanguage(this.lhs)),
+              modified: monaco.editor.createModel(this.rhs, detectLanguage(this.rhs)),
             })
             this.diffNavigator = monaco.editor.createDiffNavigator(
               this.monacoDiffEditor,

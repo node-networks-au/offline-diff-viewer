@@ -71,6 +71,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Browsers reset font-family on form controls — force them to inherit
+ * so buttons / inputs / labels share the body's system-font stack. */
+button, input, select, textarea, label {
+  font-family: inherit;
+}
+
+/* Monospaced regions (Monaco editor, kbd, pre, code blocks) use the
+ * portal-aligned monospace stack. The Monaco editor itself is set via
+ * its fontFamily option in helpers/utils.ts — this rule covers
+ * everything else that should render monospaced. */
+kbd, pre, code, samp, .editor, .monaco-editor {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
+}
+
 /* Typography — match portal's H1/H2 chrome */
 h1, h2 {
   color: var(--noden-brand);

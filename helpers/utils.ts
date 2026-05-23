@@ -61,16 +61,83 @@ export function putToClipboard(
 
 export function getMonacoEditorDefaultOptions(theme: string) {
   return {
-    language: 'javascript',
+    // Default to plain text — auto-detect runs on submit / on paste
+    // (see detectLanguage below) and switches to YAML / Python / JSON /
+    // etc. when a confident match is found. Plain text avoids
+    // JavaScript's aggressive auto-formatting and red-squiggle linting
+    // for content that isn't actually JS.
+    language: 'plaintext',
     theme,
     fontSize: parseFloat(getComputedStyle(document.documentElement).fontSize),
+    fontFamily:
+      "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, " +
+      "'Liberation Mono', monospace",
     scrollBeyondLastLine: false,
     scrollBeyondLastColumn: 0,
-    minimap: {
-      enabled: false,
-    },
+    minimap: { enabled: false },
     contextmenu: false,
+    // No autocomplete / inline suggestions / hover popovers while
+    // typing — this is a diff paste box, not an IDE.
+    quickSuggestions: false,
+    suggestOnTriggerCharacters: false,
+    acceptSuggestionOnEnter: 'off' as const,
+    wordBasedSuggestions: 'off' as const,
+    snippetSuggestions: 'none' as const,
+    parameterHints: { enabled: false },
+    hover: { enabled: false },
+    links: false,
+    occurrencesHighlight: 'off' as const,
+    selectionHighlight: false,
+    renderLineHighlight: 'none' as const,
+    inlineSuggest: { enabled: false },
+    'semanticHighlighting.enabled': false,
   }
+}
+
+/**
+ * Heuristic language detection for the paste boxes. Cheap regex
+ * matches biased toward specificity — when nothing fires confidently
+ * we stay on plain text. Returns a Monaco language id.
+ */
+export function detectLanguage(text: string): string {
+  if (!text) return 'plaintext'
+  const sample = text.slice(0, 4000)
+  const trimmed = sample.trimStart()
+
+  if (/^[\[{]/.test(trimmed)) {
+    try {
+      JSON.parse(text)
+      return 'json'
+    } catch {
+      if (/^\s*[{[][\s\S]*"[^"]+"\s*:/.test(sample)) return 'json'
+    }
+  }
+  if (/^---\s*$/m.test(sample) ||
+      /^[A-Za-z_][\w-]*:\s*(\S|$)/m.test(sample)) {
+    if (!/^\s*\{[\s\S]*\}\s*$/.test(sample)) return 'yaml'
+  }
+  if (/^\s*(def |class |from \S+ import |import \S+|if __name__)/m.test(sample)) {
+    return 'python'
+  }
+  if (/^\s*(FROM|RUN|CMD|COPY|ADD|EXPOSE|ENV|WORKDIR|ARG|LABEL)\s+/m.test(sample)) {
+    return 'dockerfile'
+  }
+  if (/^#!\s*\/.+\b(sh|bash|zsh)\b/.test(trimmed) ||
+      /^\s*(set -[eu]|export \w+=|sudo )/m.test(sample)) {
+    return 'shell'
+  }
+  if (/^\s*(resource|data|module|variable|output|provider)\s+"[^"]+"\s*("[^"]+"\s*)?\{/m.test(sample)) {
+    return 'hcl'
+  }
+  if (/^\s*<\?xml\b/.test(trimmed) ||
+      /^\s*<!DOCTYPE\s+html/i.test(trimmed) ||
+      /^\s*<[a-zA-Z][\w-]*[\s>]/.test(trimmed)) {
+    return 'xml'
+  }
+  if (/^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE TABLE|ALTER TABLE|DROP TABLE)\b/im.test(sample)) {
+    return 'sql'
+  }
+  return 'plaintext'
 }
 
 export function arrayBufferToBase64(buffer: ArrayBuffer) {

@@ -17,22 +17,19 @@
           <Brand />
         </NuxtLink>
       </div>
-      <div class="flex items-center justify-between flex-1">
-        <div class="items-center w-1/2">
-          <slot name="left" />
-        </div>
-        <div class="flex items-center justify-end w-1/2 gap-4">
-          <slot name="right" />
-          <button
-            type="button"
-            class="inline-flex items-center justify-center ml-4 bg-transparent border-2 border-gray-700 rounded-full shadow-lg  w-9 h-9 active:scale-y-75 hover:scale-105 hover:shadow-lg"
-            aria-label="Toggle Dark Mode"
-            @click="toggleDarkMode"
-          >
-            <Sun v-if="darkMode" />
-            <Moon v-if="!darkMode" />
-          </button>
-        </div>
+      <div class="flex items-center flex-1 gap-4">
+        <slot name="left" />
+        <div class="flex-1"></div>
+        <slot name="right" />
+        <button
+          type="button"
+          class="inline-flex items-center justify-center bg-transparent border-2 border-gray-700 rounded-full shadow-lg w-9 h-9 active:scale-y-75 hover:scale-105 hover:shadow-lg"
+          aria-label="Toggle Dark Mode"
+          @click="toggleDarkMode"
+        >
+          <Sun v-if="darkMode" />
+          <Moon v-if="!darkMode" />
+        </button>
       </div>
     </div>
   </nav>
