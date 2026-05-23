@@ -19,15 +19,6 @@
       </div>
       <div class="flex items-center justify-between flex-1">
         <div class="items-center w-1/2">
-          <a
-            href="https://github.com/technikhil314/offline-diff-viewer/stargazers"
-            title="github stars on this open source project"
-          >
-            <img
-              src="https://img.shields.io/github/stars/technikhil314/offline-diff-viewer?style=social"
-              alt=""
-            />
-          </a>
           <slot name="left" />
         </div>
         <div class="flex items-center justify-end w-1/2 gap-4">
@@ -43,42 +34,19 @@
           </button>
         </div>
       </div>
-      <!-- buttons -->
-      <nav class="contents">
-        <ul class="flex items-center justify-end">
-          <li class="relative inline-block ml-2 lg:ml-4">
-            <a
-              href="https://github.com/technikhil314/offline-diff-viewer"
-              title="go to github repository of this open source project"
-            >
-              <Github />
-            </a>
-          </li>
-          <li class="relative inline-block ml-2 lg:ml-4">
-            <a
-              href="https://github.com/sponsors/technikhil314"
-              title="If you like and enjoy using this product then please considering sponsoring my work."
-            >
-              <Sponsor />
-            </a>
-          </li>
-        </ul>
-      </nav>
     </div>
   </nav>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
-import Github from '~/components/icons/github.vue'
 import Back from '~/components/icons/back.vue'
 import Sun from '~/components/icons/sun.vue'
 import Moon from '~/components/icons/moon.vue'
 import Brand from '~/components/icons/brand.vue'
-import Sponsor from '~/components/icons/sponsor.vue'
 let darkMode: Boolean | null = null
 export default Vue.extend({
-  components: { Github, Sun, Moon, Back, Brand, Sponsor },
+  components: { Sun, Moon, Back, Brand },
   props: {
     showBackButton: {
       type: Boolean,

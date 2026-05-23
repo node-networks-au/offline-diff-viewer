@@ -2,16 +2,6 @@
   <div class="page-contents">
     <Navbar />
     <main class="text-gray-800 outline-none dark:text-gray-50" tabindex="0">
-      <section>
-        <header>
-          <h1 class="mb-2 w-full text-xl text-center">
-            Find difference in any two text blocks and get easy sharable link
-          </h1>
-          <h2 class="mb-2 w-full text-center text-md">
-            Don’t worry, We don’t store any of your data
-          </h2>
-        </header>
-      </section>
       <form class="flex flex-col gap-4 w-full" @submit="checkForm">
         <section class="flex gap-4 w-full">
           <div class="flex flex-col gap-4 w-1/2">
@@ -65,6 +55,12 @@
             Compare
           </button>
         </div>
+        <p
+          class="mt-3 w-full text-sm text-center"
+          style="color: var(--noden-text-secondary, #64748b);"
+        >
+          Don’t worry, we don’t store any of your data.
+        </p>
       </form>
     </main>
     <Footer />
