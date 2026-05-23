@@ -83,6 +83,41 @@ Live at:
 - **Unified-view toggle removed** — side-by-side is the canonical
   layout.
 
+### Theming & motion
+
+- **Dark / light mode toggle** in the navbar (sun ↔ moon glyph)
+  with a **250 ms crossfade** on background, text, border, and
+  shadow across every structural surface. Monaco's own theme is
+  swapped via `vs` ⇄ `vs-dark` and snaps (canvas repaint is not a
+  property we control).
+- **Dark-mode palette** layered on the same CSS custom properties
+  — navy headings shift to white, card surfaces shift to
+  `#1f2937`/`#0f172a`, accent blue lightens to `#60a5fa`.
+- **Smooth in-button state transitions** on Copy link (Link →
+  Generating… → Copied → Link), focus rings (`rgba(74,158,255,.3)`),
+  hover lifts on cards, and `0.97` active-scale taps on pill
+  buttons.
+
+### Removed cruft from upstream
+
+- Google AdSense `<script>` tag and `google-adsense-account`
+  meta.
+- Upstream "GitHub stars" badge, repo link, and `Sponsor` button
+  from the navbar.
+- "Made with ♥ using Nuxt & Tailwind by © Nikhil Mehta" footer
+  (replaced with the legal-minimum BSD attribution).
+- "A tool that helps you compare…" / "Don't worry, We don't
+  store any of your data" upstream hero block on the home page
+  (privacy note moved under the Compare button instead).
+- `twitter:creator` pointing at the upstream author.
+- v1 (textarea-based) `/` and `/diff` pages and their `inlineDiff`
+  / `singleDiff` / `swapDiffContent` components.
+- Open Sans Google Fonts preconnect + import (system font stack
+  used instead).
+- Dual light/dark favicon split (one favicon set for both modes).
+- The unified-view diff toggle, the swap-content button, and the
+  success toast on Copy link.
+
 ### Container & deployment
 
 - **Multi-stage Dockerfile** baking the Nuxt static export into
@@ -90,10 +125,16 @@ Live at:
   generate` (saves 2 GB peak memory + ~3 min per pod start).
 - **GitHub Actions workflow** in `.github/workflows/build-image.yml`
   builds + pushes `ghcr.io/node-networks-au/offline-diff-viewer:latest`
-  on every push to `develop`.
+  + a `sha-<commit>` tag on every push to `develop`.
 - Pre-built image consumed by both clusters via standard
   Kubernetes Deployment manifests (KRO RGD on dev,
-  plain-kubectl manifest on prod).
+  plain-kubectl manifest on prod). Dev + prod restart in lock-step
+  after each build so both clusters resolve `:latest` to the same
+  image digest.
+- Private GHCR package authenticated via the 1Password-backed
+  `s-k8s-read-packages` ExternalSecret (rendered into a
+  `kubernetes.io/dockerconfigjson` Secret called `ghcr-pull` and
+  referenced from each Deployment's `imagePullSecrets`).
 
 ## Privacy properties
 

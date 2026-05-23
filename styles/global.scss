@@ -71,6 +71,32 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Smooth dark-mode / light-mode crossfade. The toggle adds /
+ * removes `.dark` on <html>, which flips the dark: Tailwind
+ * variants and the CSS-custom-property fallbacks throughout the
+ * stylesheet. Without a transition the swap is a hard snap; this
+ * adds a 250ms ease on background + text + border across every
+ * structural surface so the change reads as a fade.
+ *
+ * Monaco's editor canvas repaints via its own theme switcher
+ * (vs ⇄ vs-dark) and is excluded — animating its internal canvas
+ * pixels would be expensive and isn't a property we control. */
+html, body, .page-root, .page-contents, main,
+.noden-pane, .noden-pane-head, .noden-editor,
+.noden-diff-shell, .noden-diff-actions, .noden-diff-status,
+.noden-pane-edit, .noden-pill-btn, .noden-icon-btn,
+.noden-btn, .noden-btn-primary, .noden-btn-ghost, .noden-card,
+.noden-pane-label-input, .noden-pane-icon-btn, .noden-lang-select,
+.copy-link-btn, .noden-footer, .noden-footer-link,
+.noden-nav, .noden-nav-inner, .noden-theme-toggle,
+nav, footer {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
 /* Browsers reset font-family on form controls — force them to inherit
  * so buttons / inputs / labels share the body's system-font stack. */
 button, input, select, textarea, label {
