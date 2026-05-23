@@ -414,22 +414,41 @@ export default Vue.extend({
 .noden-diff-viewer {
   width: 100%;
   height: 100%;
+  overflow: hidden;
+}
+/* Monaco lays its diff editor inside the .noden-diff-viewer host.
+ * Force its outer wrappers to inherit the host's height so the
+ * editor can never push the host past its parent's max-height. */
+.noden-diff-viewer .monaco-diff-editor,
+.noden-diff-viewer .monaco-editor {
+  height: 100% !important;
 }
 
-/* Scrollbar dedup, DOM-level. Monaco's diff editor renders two
- * inner editors (.editor.original on the left, .editor.modified
- * on the right), each with its own .monaco-scrollable-element
- * scrollbar. updateOptions() on the inner editors is unreliable
- * for hiding scrollbars (Monaco re-asserts its defaults), so we
- * collapse the left side's scrollbar with raw CSS instead. The
- * right-side scrollbar stays as the single canonical scroll
- * affordance — Monaco's intra-diff sync moves both panes
- * together. (Block is non-scoped so it reaches Monaco's
- * externally-rendered DOM.) */
-.monaco-diff-editor .editor.original .monaco-scrollable-element > .scrollbar.vertical {
+/* Scrollbar dedup, DOM-level. Monaco's class names for the
+ * original / modified panes vary across versions:
+ *   - .editor.original / .editor.modified  (older)
+ *   - .original-in-monaco-diff-editor /
+ *     .modified-in-monaco-diff-editor       (newer)
+ * Cover both. We hide the left-pane scrollbar, its
+ * decorationsOverviewRuler, and the diff editor's own outer
+ * overview-ruler column (it duplicates the modified pane's).
+ * Block is non-scoped so it reaches Monaco's externally-
+ * rendered DOM. */
+.monaco-diff-editor .editor.original .monaco-scrollable-element > .scrollbar.vertical,
+.monaco-diff-editor .original-in-monaco-diff-editor .monaco-scrollable-element > .scrollbar.vertical,
+.monaco-diff-editor [class*="original-in"] .monaco-scrollable-element > .scrollbar.vertical {
+  display: none !important;
+  width: 0 !important;
+}
+.monaco-diff-editor .editor.original .decorationsOverviewRuler,
+.monaco-diff-editor .original-in-monaco-diff-editor .decorationsOverviewRuler,
+.monaco-diff-editor [class*="original-in"] .decorationsOverviewRuler {
   display: none !important;
 }
-.monaco-diff-editor .editor.original .decorationsOverviewRuler {
+/* Hide the right-edge global diff overview ruler that some Monaco
+ * builds render alongside the per-pane ones — leaves the modified
+ * pane's slim scrollbar as the single visible vertical affordance. */
+.monaco-diff-editor .diffOverview {
   display: none !important;
 }
 
