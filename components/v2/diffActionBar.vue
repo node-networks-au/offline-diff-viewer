@@ -1,30 +1,42 @@
 <template>
   <section
     class="
-      flex
-      items-center
-      justify-between
-      px-4
-      py-2
-      mb-4
-      top-[70px]
-      dark:bg-gray-700
-      bg-gray-300 bg-opacity-50
-      rounded-md
-      shadow-lg
-      border border-gray-500
-      w-full
+      flex items-center justify-end gap-3 px-4 py-2 mb-4
+      w-full rounded-md shadow-sm border
+      bg-white dark:bg-gray-800
+      border-gray-200 dark:border-gray-700
     "
   >
-    <div class="flex gap-4">
-      <NextDiff :click-handler="goToNextDiff" />
-      <PrevDiff :click-handler="goToPreviousDiff" />
-      <swapDiffContent :click-handler="swapDiffContent" />
-    </div>
-    <div class="flex gap-4 items-center">
-      <DiffStyle :click-handler="toggleDiffFashion" />
-      <CopyLink :click-handler="copyUrlToClipboard" :copied="copied"></CopyLink>
-    </div>
+    <!-- Layout-toggle on the left of the right cluster; doesn't need
+         to be visually separated since the chrome is a single row. -->
+    <DiffStyle :click-handler="toggleDiffFashion" />
+
+    <!-- Visual divider between layout-toggle and copy-link.  -->
+    <span class="h-6 w-px bg-gray-200 dark:bg-gray-600" aria-hidden="true" />
+
+    <CopyLink :click-handler="copyUrlToClipboard" :copied="copied" />
+
+    <!-- Far-right cluster: previous / next diff navigators as
+         icon-only arrow buttons. -->
+    <span class="h-6 w-px bg-gray-200 dark:bg-gray-600" aria-hidden="true" />
+    <button
+      type="button"
+      class="noden-icon-btn"
+      aria-label="Go to previous diff"
+      title="Previous diff"
+      @click="goToPreviousDiff"
+    >
+      <Up />
+    </button>
+    <button
+      type="button"
+      class="noden-icon-btn"
+      aria-label="Go to next diff"
+      title="Next diff"
+      @click="goToNextDiff"
+    >
+      <Down />
+    </button>
   </section>
 </template>
 
@@ -32,9 +44,8 @@
 import Vue from 'vue'
 import CopyLink from '../buttons/copyLink.vue'
 import DiffStyle from '../buttons/diffStyle.vue'
-import NextDiff from '../buttons/nextDiff.vue'
-import PrevDiff from '../buttons/prevDiff.vue'
-import SwapDiffContent from '../buttons/swapDiffContent.vue'
+import Up from '~/components/icons/up.vue'
+import Down from '~/components/icons/down.vue'
 import { SIMPLE_DIFF_CHARACTER_LIMIT } from '~/constants/constants'
 import {
   E2E_LINK_GENERATION_ERROR,
@@ -49,23 +60,13 @@ import {
 import { DiffActionBarData } from '~/helpers/types'
 import { getRandomDiffId, putToClipboard } from '~/helpers/utils'
 export default Vue.extend({
-  components: {
-    PrevDiff,
-    NextDiff,
-    CopyLink,
-    DiffStyle,
-    SwapDiffContent,
-  },
+  components: { CopyLink, DiffStyle, Up, Down },
   props: {
     diffNavigator: {
       type: Object,
       required: true,
     },
     onDiffFashion: {
-      type: Function,
-      required: true,
-    },
-    onSwapDiffContent: {
       type: Function,
       required: true,
     },
@@ -171,9 +172,6 @@ export default Vue.extend({
     toggleDiffFashion(value: boolean) {
       this.onDiffFashion(value)
     },
-    swapDiffContent() {
-      this.onSwapDiffContent()
-    },
     showErrorToast(content: string) {
       this.$store.commit('toast/show', {
         show: true,
@@ -203,5 +201,42 @@ export default Vue.extend({
 <style lang="scss">
 .copy-uri-button:hover svg {
   @apply rotate-12;
+}
+/* Portal-aligned icon button used by the prev/next nav arrows. */
+.noden-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--noden-border-light, #e5e7eb);
+  background: var(--noden-bg-primary, #ffffff);
+  color: var(--noden-text-primary, #1e3a5f);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.noden-icon-btn:hover {
+  background: var(--noden-primary-light, #dbeafe);
+  border-color: var(--noden-primary, #2563eb);
+  color: var(--noden-primary, #2563eb);
+}
+.noden-icon-btn:active {
+  transform: scale(0.96);
+}
+.noden-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.3);
+}
+.dark .noden-icon-btn {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+.dark .noden-icon-btn:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
 }
 </style>

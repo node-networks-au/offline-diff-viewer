@@ -14,27 +14,36 @@
         <DiffActionBar
           :diff-navigator="diffNavigator"
           :on-diff-fashion="toggleDiffFashion"
-          :on-swap-diff-content="swapDiffContent"
         />
         <section
-          class="flex flex-wrap gap-4 items-stretch w-full font-mono text-gray-800  dark:text-gray-50"
+          class="flex flex-wrap gap-4 items-stretch w-full text-gray-800 dark:text-gray-50"
         >
+          <!-- Editable per-pane labels. The original render shipped
+               these as <p> elements; users now want to rename each
+               side after the diff is loaded. We bind via v-model
+               directly to the page-level reactive lhsLabel/rhsLabel
+               so any subsequent share-link generation picks up the
+               updated names too. -->
           <div
             :class="{
-              'flex w-full gap-4 space-around transition-opacity': true,
+              'flex w-full gap-4 items-center transition-opacity': true,
               'opacity-0': !isSideBySideDiff,
             }"
           >
-            <p
-              class="flex-grow-0 flex-shrink-0 w-1/2 text-lg font-bold text-center capitalize break-all"
-            >
-              <span class="inline-block w-4/5">{{ lhsLabel }}</span>
-            </p>
-            <p
-              class="flex-grow-0 flex-shrink-0 w-1/2 text-lg font-bold text-center capitalize break-all"
-            >
-              <span class="inline-block w-4/5">{{ rhsLabel }}</span>
-            </p>
+            <input
+              v-model="lhsLabel"
+              type="text"
+              class="noden-pane-label"
+              placeholder="Label this side..."
+              aria-label="Left pane label"
+            />
+            <input
+              v-model="rhsLabel"
+              type="text"
+              class="noden-pane-label"
+              placeholder="Label this side..."
+              aria-label="Right pane label"
+            />
           </div>
           <div
             v-show="!e2eDataStatusText"
@@ -136,21 +145,8 @@ export default Vue.extend({
       this.monacoDiffEditor?.updateOptions?.({ renderSideBySide: value })
       this.isSideBySideDiff = value
     },
-    swapDiffContent() {
-      const temp = this.lhs
-      this.lhs = this.rhs
-      this.rhs = temp
-      loader.init().then((monaco) => {
-        this.monacoDiffEditor.setModel({
-          original: monaco.editor.createModel(this.lhs, 'javascript'),
-          modified: monaco.editor.createModel(this.rhs, 'javascript'),
-        })
-        this.$store.commit('data/set', {
-          lhs: this.lhs,
-          rhs: this.rhs,
-        })
-      })
-    },
+    // swapDiffContent removed — the swap button is gone from the
+    // action bar (users found it confusing on read-only diffs).
     async getE2EData() {
       this.e2eDataStatusText = E2E_DATA_LOADING_INFO
       const url = new URL(window.location.href)
@@ -201,6 +197,21 @@ export default Vue.extend({
               readOnly: true,
               wordWrap: 'on',
               diffAlgorithm: 'advanced',
+              // Modernize the right-edge overview ruler (heat-map of
+              // changes). Without a border it merges into the editor
+              // chrome; 12-px-wide scrollbar + rounded handles match
+              // the portal-aligned visual weight.
+              overviewRulerBorder: false,
+              overviewRulerLanes: 3,
+              scrollbar: {
+                useShadows: false,
+                verticalScrollbarSize: 12,
+                horizontalScrollbarSize: 12,
+                verticalSliderSize: 12,
+                horizontalSliderSize: 12,
+              },
+              renderLineHighlight: 'none',
+              renderOverviewRuler: true,
             }
           ) as any
           if (this.monacoDiffEditor) {
@@ -247,5 +258,45 @@ export default Vue.extend({
 <style>
 .editor {
   max-height: max(500px, calc(100vh - 17rem));
+}
+
+/* Editable per-pane label. Looks like a plain heading until you
+ * hover/focus, then it gets a subtle outline + cursor: text so the
+ * affordance is obvious. */
+.noden-pane-label {
+  flex: 1 1 0;
+  min-width: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--noden-brand, #133353);
+  outline: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.noden-pane-label::placeholder {
+  color: var(--noden-text-secondary, #64748b);
+  font-weight: 400;
+}
+.noden-pane-label:hover {
+  border-color: var(--noden-border-light, #e5e7eb);
+}
+.noden-pane-label:focus {
+  background: var(--noden-bg-primary, #ffffff);
+  border-color: var(--noden-accent, #4a9eff);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.15);
+}
+.dark .noden-pane-label {
+  color: #ffffff;
+}
+.dark .noden-pane-label:hover {
+  border-color: #4b5563;
+}
+.dark .noden-pane-label:focus {
+  background: #1f2937;
+  border-color: #60a5fa;
 }
 </style>
