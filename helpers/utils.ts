@@ -59,7 +59,7 @@ export function putToClipboard(
   })
 }
 
-export function getMonacoEditorDefaultOptions(theme: string) {
+export function getMonacoEditorDefaultOptions(theme: string): any {
   return {
     // Default to plain text — auto-detect runs on submit / on paste
     // (see detectLanguage below) and switches to YAML / Python / JSON /
