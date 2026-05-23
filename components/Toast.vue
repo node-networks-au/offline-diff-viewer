@@ -22,7 +22,9 @@
     >
       <div class="flex items-center justify-between gap-2">
         <div v-html="toastState.iconHTML"></div>
-        <h1>{{ toastState.content }}</h1>
+        <!-- p, not h1 — the global stylesheet sizes h1 at 2.2rem
+             which made the "link copied" toast read like a banner. -->
+        <p class="text-sm font-medium m-0">{{ toastState.content }}</p>
       </div>
     </div>
   </div>
