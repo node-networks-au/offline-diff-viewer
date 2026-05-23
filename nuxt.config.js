@@ -97,146 +97,19 @@ export default {
         title: 'Sitemap',
         href: '/sitemap.xml',
       },
-      { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-      {
-        rel: 'preconnect',
-        href: 'https://fonts.gstatic.com',
-        crossorigin: true,
-      },
-      {
-        href: 'https://fonts.googleapis.com/css2?family=Open+Sans&display=swap',
-        rel: 'stylesheet',
-      },
-      {
-        rel: 'icon',
-        media: '(prefers-color-scheme: light)',
-        type: 'image/x-icon',
-        href: '/dark-favicon.ico',
-      },
-      {
-        rel: 'shortcut icon',
-        media: '(prefers-color-scheme: light)',
-        href: '/dark-favicon.ico',
-        type: 'image/x-icon',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        href: '/dark-apple-touch-icon.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '57x57',
-        href: '/dark-apple-touch-icon-57x57.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '72x72',
-        href: '/dark-apple-touch-icon-72x72.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '76x76',
-        href: '/dark-apple-touch-icon-76x76.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '114x114',
-        href: '/dark-apple-touch-icon-114x114.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '120x120',
-        href: '/dark-apple-touch-icon-120x120.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '144x144',
-        href: '/dark-apple-touch-icon-144x144.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '152x152',
-        href: '/dark-apple-touch-icon-152x152.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: light)',
-        sizes: '180x180',
-        href: '/dark-apple-touch-icon-180x180.png',
-      },
-      {
-        rel: 'icon',
-        media: '(prefers-color-scheme: dark)',
-        type: 'image/x-icon',
-        href: '/light-favicon.ico',
-      },
-      {
-        rel: 'shortcut icon',
-        media: '(prefers-color-scheme: dark)',
-        href: '/light-favicon.ico',
-        type: 'image/x-icon',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        href: '/light-apple-touch-icon.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '57x57',
-        href: '/light-apple-touch-icon-57x57.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '72x72',
-        href: '/light-apple-touch-icon-72x72.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '76x76',
-        href: '/light-apple-touch-icon-76x76.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '114x114',
-        href: '/light-apple-touch-icon-114x114.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '120x120',
-        href: '/light-apple-touch-icon-120x120.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '144x144',
-        href: '/light-apple-touch-icon-144x144.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '152x152',
-        href: '/light-apple-touch-icon-152x152.png',
-      },
-      {
-        rel: 'apple-touch-icon',
-        media: '(prefers-color-scheme: dark)',
-        sizes: '180x180',
-        href: '/light-apple-touch-icon-180x180.png',
-      },
+      /* No Google Fonts — we use the system font stack to match the
+       * portal-ui look (matches whatever the user's OS is rendering
+       * for native chrome). Saves a network round-trip on first paint. */
+      /* NodeN-branded favicons. The light/dark dual-favicon dance the
+       * upstream did is collapsed to a single set — the noden logo
+       * works on both backgrounds (navy fill on light bg; the navbar
+       * inverts to white via CSS filter on dark bg). */
+      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+      { rel: 'shortcut icon', type: 'image/x-icon', href: '/favicon.ico' },
+      { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
+      { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/favicon-512x512.png' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
     ],
   },
 

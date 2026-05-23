@@ -1,8 +1,29 @@
 @import 'driver.js/dist/driver.min.css';
 
-/* Basic layout */
+/* ============================================================================
+ * NodeN brand palette — sourced from the portal-ui (tooling repo).
+ * Light-mode only for now; dark mode keeps the original gray-900 fallback so
+ * upstream Tailwind dark: variants continue to work.
+ * ============================================================================ */
 :root {
   color-scheme: dark light;
+
+  --noden-brand: #133353;        /* navy: logo, H1s, primary text */
+  --noden-brand-bg: #faf8fa;     /* warm off-white app bg */
+  --noden-primary: #2563eb;      /* blue-600: primary button */
+  --noden-primary-hover: #1d4ed8;
+  --noden-primary-light: #dbeafe;
+  --noden-accent: #4a9eff;       /* focus rings, active borders */
+  --noden-accent-hover: #2a8dde;
+  --noden-bg-primary: #ffffff;   /* card surface */
+  --noden-bg-secondary: #f7f5f7; /* inner panel */
+  --noden-bg-tertiary: #e5e7eb;
+  --noden-text-primary: #1e3a5f;
+  --noden-text-body: #2d2a2e;
+  --noden-text-secondary: #64748b;
+  --noden-border-light: #e5e7eb;
+  --noden-border-medium: #d1d5db;
+  --noden-card-shadow: 0 2px 8px rgba(45, 42, 46, 0.08);
 }
 
 html,
@@ -19,13 +40,109 @@ body,
 #__layout,
 .page-root,
 main {
-  @apply bg-gray-50 dark:bg-gray-900;
   scroll-padding-block: 140px;
   scroll-behavior: smooth;
 }
 
+html,
+body,
+#__nuxt,
+#__layout,
+.page-root,
+main {
+  background: var(--noden-brand-bg);
+  color: var(--noden-text-body);
+}
+
+.dark,
+.dark body,
+.dark #__nuxt,
+.dark #__layout,
+.dark .page-root,
+.dark main {
+  @apply bg-gray-900 text-gray-50;
+}
+
 body {
-  font-family: 'Open Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography — match portal's H1/H2 chrome */
+h1, h2 {
+  color: var(--noden-brand);
+  font-weight: 600;
+}
+.dark h1, .dark h2 {
+  color: #ffffff;
+}
+h1 { font-size: 2.2rem; line-height: 1.2; }
+h2 { font-size: 1.5rem; line-height: 1.3; }
+
+/* Buttons — generic .btn-noden-primary / .btn-noden-secondary you can
+ * sprinkle onto the existing upstream buttons via :class bindings. The
+ * upstream Tailwind utilities still work; these are additive. */
+.btn-noden,
+.btn-noden-primary,
+.btn-noden-secondary {
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.btn-noden-primary {
+  background: var(--noden-primary);
+  color: #ffffff;
+}
+.btn-noden-primary:hover {
+  background: var(--noden-primary-hover);
+}
+.btn-noden-secondary {
+  background: var(--noden-bg-tertiary);
+  color: var(--noden-text-primary);
+  border-color: var(--noden-border-light);
+}
+.btn-noden-secondary:hover {
+  background: var(--noden-border-medium);
+}
+
+/* Inputs — portal focus ring */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--noden-accent);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+}
+
+/* Card / panel surface — wraps the existing diff containers */
+.noden-card {
+  background: var(--noden-bg-primary);
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: var(--noden-card-shadow);
+}
+.dark .noden-card {
+  background: #1f2937;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Links default to the portal blue */
+a {
+  color: var(--noden-primary);
+}
+a:hover {
+  color: var(--noden-primary-hover);
+}
+.dark a {
+  color: #93c5fd;
 }
 
 .page-root {
