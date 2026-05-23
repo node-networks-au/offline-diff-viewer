@@ -70,9 +70,10 @@ Live at:
 
 - **Side-by-side diff** with a single unified scrollbar — the
   original-side scrollbar is hidden, the modified-side is a slim
-  8 px scrollbar that drives both panes via Monaco's intra-diff
-  scroll sync. The right-edge overview ruler (change heat-map)
-  stays put.
+  8 px scrollbar (flush against the right edge of the card) that
+  drives both panes via Monaco's intra-diff scroll sync. The
+  right-edge overview ruler is disabled (`renderOverviewRuler:
+  false`) so the scrollbar isn't inset behind a heat-map column.
 - **Editable pane labels** above the diff — rename either side and
   the URL hash is regenerated on the fly via `history.replaceState`,
   so the next *Copy link* picks up the new names.

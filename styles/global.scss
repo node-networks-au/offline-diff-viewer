@@ -188,18 +188,27 @@ a:hover {
 
 /* Hard-bound the page to exactly 100vh and hide overflow so no
  * child can ever push the document taller than the viewport.
- * The flex cascade beneath this lives in that fixed bucket and
- * shrinks editors to fit when chrome is tall. */
+ * Layout is a flex column so the footer (a sibling of
+ * .page-contents inside the diff page's <div class="contents">
+ * display:contents wrapper) can flex naturally below the main
+ * content instead of being clipped past the bottom edge. */
 .page-root {
   @apply w-full;
   height: 100vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-contents {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* flex-grow to fill the leftover height in .page-root after the
+   * sibling footer takes its intrinsic height. basis 0 + min-height 0
+   * so this box can shrink under tight viewports without forcing a
+   * page overflow. */
+  flex: 1 1 0;
+  min-height: 0;
   width: 100%;
   overflow: hidden;
 }

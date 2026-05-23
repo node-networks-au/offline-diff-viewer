@@ -277,12 +277,15 @@ export default Vue.extend({
                * when the container resizes, which is exactly the
                * flex-grow behaviour we have on the shell. */
               automaticLayout: true,
-              // Modernize the right-edge overview ruler (heat-map of
-              // changes). Without a border it merges into the editor
-              // chrome; 8-px slim scrollbar matches the portal-aligned
-              // visual weight.
+              // Drop the right-edge overview ruler entirely. CSS
+              // display:none doesn't reclaim the column — Monaco still
+              // reserves ~14px for it in its layout math, which pushes
+              // the modified pane's slim scrollbar inset from the
+              // right edge of the shell. renderOverviewRuler:false +
+              // overviewRulerLanes:0 tells Monaco not to allocate
+              // those pixels, so the scrollbar sits flush right.
               overviewRulerBorder: false,
-              overviewRulerLanes: 2,
+              overviewRulerLanes: 0,
               scrollbar: {
                 useShadows: false,
                 verticalScrollbarSize: 8,
@@ -291,7 +294,7 @@ export default Vue.extend({
                 horizontalSliderSize: 8,
               },
               renderLineHighlight: 'none',
-              renderOverviewRuler: true,
+              renderOverviewRuler: false,
             }
           ) as any
           if (this.monacoDiffEditor) {
@@ -307,6 +310,8 @@ export default Vue.extend({
                   verticalScrollbarSize: 0,
                   verticalSliderSize: 0,
                 },
+                overviewRulerLanes: 0,
+                hideCursorInOverviewRuler: true,
               })
               this.monacoDiffEditor.getModifiedEditor().updateOptions({
                 scrollbar: {
@@ -315,6 +320,8 @@ export default Vue.extend({
                   verticalSliderSize: 8,
                   useShadows: false,
                 },
+                overviewRulerLanes: 0,
+                hideCursorInOverviewRuler: true,
               })
             } catch (_e) {
               /* Older Monaco builds without getOriginal/getModified
@@ -373,8 +380,13 @@ export default Vue.extend({
 .noden-diff-section {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  /* basis 0 (not auto) so flex sizing is driven by the parent's
+   * available height, not by the section's intrinsic content height.
+   * overflow:hidden caps growth so the shell can never push past
+   * the section's flex-allocated box. */
+  flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
   gap: 12px;
   width: 100%;
   color: var(--noden-text-body, #2d2a2e);
@@ -393,13 +405,14 @@ export default Vue.extend({
  * looks like one of the editor panes from the home page. */
 .noden-diff-shell {
   position: relative;
-  /* `0` basis so the shell can shrink under tight viewports without
-   * forcing the page taller than 100vh. min-height keeps a small
-   * floor on readability; max-height caps growth so the shell
-   * never escapes the viewport. */
+  /* Pure flex sizing — `0` basis + `min-height: 0` lets the shell
+   * shrink to whatever the parent allocates. No min-height floor or
+   * max-height cap; the cascade above (page-root 100vh → page-contents
+   * flex-grow → main flex-grow → section flex-grow → shell flex-grow)
+   * does the constraining. A min-height floor here was forcing the
+   * shell past the viewport on tighter window heights. */
   flex: 1 1 0;
-  min-height: 240px;
-  max-height: calc(100vh - 12rem);
+  min-height: 0;
   width: 100%;
   background: var(--noden-bg-primary, #ffffff);
   border: 1px solid var(--noden-border-light, #e5e7eb);
@@ -424,32 +437,21 @@ export default Vue.extend({
   height: 100% !important;
 }
 
-/* Scrollbar dedup, DOM-level. Monaco's class names for the
+/* Belt-and-suspenders scrollbar dedup. Monaco's class names for the
  * original / modified panes vary across versions:
  *   - .editor.original / .editor.modified  (older)
  *   - .original-in-monaco-diff-editor /
  *     .modified-in-monaco-diff-editor       (newer)
- * Cover both. We hide the left-pane scrollbar, its
- * decorationsOverviewRuler, and the diff editor's own outer
- * overview-ruler column (it duplicates the modified pane's).
- * Block is non-scoped so it reaches Monaco's externally-
- * rendered DOM. */
+ * The Monaco updateOptions() call in mounted() already sets
+ * vertical: 'hidden' on the original pane, but covering it here
+ * defends against future bundle upgrades that might re-introduce
+ * the default scrollbar. Block is non-scoped so it reaches Monaco's
+ * externally-rendered DOM. */
 .monaco-diff-editor .editor.original .monaco-scrollable-element > .scrollbar.vertical,
 .monaco-diff-editor .original-in-monaco-diff-editor .monaco-scrollable-element > .scrollbar.vertical,
 .monaco-diff-editor [class*="original-in"] .monaco-scrollable-element > .scrollbar.vertical {
   display: none !important;
   width: 0 !important;
-}
-.monaco-diff-editor .editor.original .decorationsOverviewRuler,
-.monaco-diff-editor .original-in-monaco-diff-editor .decorationsOverviewRuler,
-.monaco-diff-editor [class*="original-in"] .decorationsOverviewRuler {
-  display: none !important;
-}
-/* Hide the right-edge global diff overview ruler that some Monaco
- * builds render alongside the per-pane ones — leaves the modified
- * pane's slim scrollbar as the single visible vertical affordance. */
-.monaco-diff-editor .diffOverview {
-  display: none !important;
 }
 
 /* Per-pane edit pill. Two of them: left pill anchors to the right
