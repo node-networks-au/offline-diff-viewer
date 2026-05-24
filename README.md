@@ -68,20 +68,25 @@ Live at:
 
 ### Diff viewer (`/diff`)
 
-- **Side-by-side diff** with a single unified scrollbar — the
-  original-side scrollbar is hidden, the modified-side is a slim
-  8 px scrollbar that drives both panes via Monaco's intra-diff
-  scroll sync.
-- **Change heatmap** rendered as the rightmost column inside the
-  diff editor (Monaco's own `renderOverviewRuler: true`). The
-  ~14-px column shows added / removed line marks at full document
-  scale so you can see where the changes cluster at a glance.
-  `overviewRulerBorder: false` drops the 1-px separator between
-  the heatmap and the modified pane so the two read as one
-  continuous chrome column. Per-side editor rulers are disabled
-  (`overviewRulerLanes: 0` + `hideCursorInOverviewRuler: true`)
-  so the heatmap is the only overview — no duplicate cursor or
-  error marks in the middle of the diff.
+- **Side-by-side diff** with the **change heatmap doubling as the
+  single scroll affordance.** Both per-side scrollbars are hidden
+  via `scrollbar.vertical: 'hidden'`; the diff editor's own
+  combined overview ruler (`renderOverviewRuler: true`) is the
+  rightmost 8-px column inside the shell and shows added / removed
+  line marks at full document scale. Monaco wires click + drag on
+  the overview ruler to scroll position, and mousewheel still
+  works inside either pane — so users can navigate either by
+  spinning the wheel, clicking a change mark to jump to it, or
+  dragging the heatmap like a scrollbar. The heatmap width is
+  forced to 8 px via CSS (`.monaco-diff-editor .diffOverview` and
+  its child canvas) so the visual weight matches the slim 8-px
+  scrollbars on the entry page. `overviewRulerBorder: false`
+  drops the 1-px separator so the heatmap reads as a continuous
+  edge of the modified pane. Per-side editor rulers are also
+  disabled (`overviewRulerLanes: 0` +
+  `hideCursorInOverviewRuler: true`) so the heatmap is the only
+  overview marker — no duplicate cursor or error glyphs in the
+  middle of the diff.
 - **Editable pane labels** above the diff — rename either side and
   the URL hash is regenerated on the fly via `history.replaceState`,
   so the next *Copy link* picks up the new names.
