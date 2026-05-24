@@ -29,6 +29,8 @@ export interface DiffActionBarData {
   copied: Boolean | null
   e2eLink: string | null
   treeWalker: TreeWalker | null
+  currentChange: number
+  totalChanges: number
 }
 
 export interface DiffData {

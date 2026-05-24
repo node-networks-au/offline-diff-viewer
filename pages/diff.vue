@@ -81,6 +81,7 @@
         <DiffActionBar
           ref="actionBar"
           :diff-navigator="diffNavigator"
+          :monaco-diff-editor="monacoDiffEditor"
         />
       </main>
     </div>
@@ -283,15 +284,19 @@ export default Vue.extend({
                * when the container resizes, which is exactly the
                * flex-grow behaviour we have on the shell. */
               automaticLayout: true,
-              // Drop the right-edge overview ruler entirely. CSS
-              // display:none doesn't reclaim the column — Monaco still
-              // reserves ~14px for it in its layout math, which pushes
-              // the modified pane's slim scrollbar inset from the
-              // right edge of the shell. renderOverviewRuler:false +
-              // overviewRulerLanes:0 tells Monaco not to allocate
-              // those pixels, so the scrollbar sits flush right.
+              // Diff-heatmap overview ruler: rendered as the rightmost
+              // column inside the diff editor (Monaco's own combined
+              // ruler, distinct from the per-side editor rulers which
+              // we hide via overviewRulerLanes:0 below). overviewRuler
+              // Border:false drops the 1-px separator line so the
+              // ruler reads as a continuous part of the modified pane
+              // chrome. The modified pane's slim 8-px scrollbar still
+              // sits just inside the ruler — that's how Monaco
+              // composes diff editors, and the inset is intentional
+              // visual signaling that the rightmost column is the
+              // change overview rather than a redundant scrollbar.
               overviewRulerBorder: false,
-              overviewRulerLanes: 0,
+              overviewRulerLanes: 3,
               scrollbar: {
                 useShadows: false,
                 verticalScrollbarSize: 8,
@@ -300,7 +305,7 @@ export default Vue.extend({
                 horizontalSliderSize: 8,
               },
               renderLineHighlight: 'none',
-              renderOverviewRuler: false,
+              renderOverviewRuler: true,
             }
           ) as any
           if (this.monacoDiffEditor) {
@@ -316,6 +321,10 @@ export default Vue.extend({
                   verticalScrollbarSize: 0,
                   verticalSliderSize: 0,
                 },
+                /* Per-side rulers hidden so the only overview is the
+                 * diff editor's own combined heatmap at the far right.
+                 * hideCursorInOverviewRuler:true also stops the cursor
+                 * mark from showing up in the diff overview. */
                 overviewRulerLanes: 0,
                 hideCursorInOverviewRuler: true,
               })

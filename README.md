@@ -70,17 +70,31 @@ Live at:
 
 - **Side-by-side diff** with a single unified scrollbar — the
   original-side scrollbar is hidden, the modified-side is a slim
-  8 px scrollbar (flush against the right edge of the card) that
-  drives both panes via Monaco's intra-diff scroll sync. The
-  right-edge overview ruler is disabled (`renderOverviewRuler:
-  false`) so the scrollbar isn't inset behind a heat-map column.
+  8 px scrollbar that drives both panes via Monaco's intra-diff
+  scroll sync.
+- **Change heatmap** rendered as the rightmost column inside the
+  diff editor (Monaco's own `renderOverviewRuler: true`). The
+  ~14-px column shows added / removed line marks at full document
+  scale so you can see where the changes cluster at a glance.
+  `overviewRulerBorder: false` drops the 1-px separator between
+  the heatmap and the modified pane so the two read as one
+  continuous chrome column. Per-side editor rulers are disabled
+  (`overviewRulerLanes: 0` + `hideCursorInOverviewRuler: true`)
+  so the heatmap is the only overview — no duplicate cursor or
+  error marks in the middle of the diff.
 - **Editable pane labels** above the diff — rename either side and
   the URL hash is regenerated on the fly via `history.replaceState`,
   so the next *Copy link* picks up the new names.
 - **Action bar** sits at the bottom of the page (below the diff
   shell, above the footer) and has two clusters:
   - Left: **Previous change** / **Next change** labelled pill
-    buttons that step through diff hunks.
+    buttons that step through diff hunks, with a soft
+    `<idx>/<total> changes` counter pill nestled between them.
+    The counter tracks position via the navigation buttons (wraps
+    around at both ends) and resets to `1/<total>` whenever the
+    diff is recomputed (Monaco's `onDidUpdateDiff`). When the two
+    sides are identical it reads *No changes* and the nav
+    buttons are visibly disabled.
   - Right: **Copy link** button. Modern in-button success state
     (Link → Copied (green) → Link) — no toast. For long
     payloads the button transitions to a *Generating…* state
