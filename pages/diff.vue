@@ -284,57 +284,84 @@ export default Vue.extend({
                * when the container resizes, which is exactly the
                * flex-grow behaviour we have on the shell. */
               automaticLayout: true,
-              /* Disable the diff editor's OWN combined overview ruler
-               * (Monaco renders this as a separate ~14-px column to
-               * the right of the modified pane, with the viewport
-               * slider as a chunky gray rounded-rect — that's what was
-               * appearing as an unhidable scrollbar). The heatmap +
-               * scroll affordance is moved to the modified pane's
-               * per-side overview ruler below, which Monaco renders
-               * at the same width as the scrollbar (8 px here) and
-               * fully wires for click-to-jump + drag-to-scroll. */
+              /* Combined overview ruler ON — this is the rightmost
+               * column inside the diff editor that shows added /
+               * removed line marks aggregated across BOTH sides
+               * (a per-side overview ruler can only show its own
+               * side's marks, so this is the only way to render a
+               * unified heatmap). The width is monkey-patched below
+               * from Monaco's hardcoded 30 px → 8 px via the static
+               * `ENTIRE_DIFF_OVERVIEW_WIDTH` field on the
+               * DiffEditorWidget constructor (Monaco re-reads this
+               * constant on every layout pass). The combined ruler's
+               * click + drag is delegated to the modified editor's
+               * vertical scrollbar by screen-Y coordinates inside
+               * Monaco's `delegateVerticalScrollbarPointerDown`, so
+               * scroll-by-drag stays wired up at the narrower width.
+               * */
               overviewRulerBorder: false,
               renderLineHighlight: 'none',
-              renderOverviewRuler: false,
+              renderOverviewRuler: true,
             }
           ) as any
           if (this.monacoDiffEditor) {
-            /* Dedupe per-pane scrollbars: hide the original pane's
-             * vertical scrollbar entirely and keep a slim 8px
-             * scrollbar on the modified pane. Both panes scroll in
-             * lock-step thanks to Monaco's intra-diff sync, so a
-             * single bar drives both. */
+            /* Patch Monaco's hardcoded combined-overview width from
+             * 30 px → 8 px so the heatmap column matches the slim
+             * scrollbars used elsewhere. The constant is a static
+             * class field on DiffEditorWidget; Monaco re-reads it
+             * inside `_layoutOverviewRulers()` and `_doLayout()` on
+             * every layout() call, so patching after construction +
+             * calling layout() re-flows the editor widths, viewport
+             * padding, and canvas sizes consistently. The legacy
+             * widget exposes the static under the constructor (which
+             * we reach via the instance's .constructor); widget v2's
+             * `OverviewRulerPart` is also patched defensively for
+             * future bundle versions even though 0.43.x defaults to
+             * the legacy widget. */
             try {
-              /* Original pane: scrollbar + overview ruler BOTH off.
-               * Intra-diff sync drives this pane from the modified
-               * side's scrollbar, so a separate scroll affordance
-               * here would only confuse. */
+              const TARGET_WIDTH = 8
+              const cls: any = (this.monacoDiffEditor as any).constructor
+              if (cls) {
+                cls.ENTIRE_DIFF_OVERVIEW_WIDTH = TARGET_WIDTH
+              }
+              const v2Part = (monaco as any)?.editor?.OverviewRulerPart
+              if (v2Part) {
+                v2Part.ONE_OVERVIEW_WIDTH = TARGET_WIDTH / 2
+                v2Part.ENTIRE_DIFF_OVERVIEW_WIDTH = TARGET_WIDTH
+              }
+              /* Force a layout pass so the editor widths + ruler
+               * canvas dimensions pick up the new constant. */
+              this.monacoDiffEditor.layout()
+            } catch (_e) {
+              /* Patch failed — overview ruler stays at default 30 px.
+               * Visually wider than the slim chrome elsewhere but not
+               * broken. */
+            }
+            try {
+              /* Both per-side scrollbars hidden. The combined diff
+               * overview ruler (now 8 px wide) is the single visible
+               * vertical affordance: it shows aggregated change marks
+               * AND functions as the scrollbar — Monaco's
+               * `delegateVerticalScrollbarPointerDown` routes pointer
+               * events into the modified editor's underlying vertical
+               * scrollbar by screen-Y coordinates, so click + drag
+               * still work even though the modified scrollbar is
+               * visually hidden. Per-side overview rulers also off
+               * (lanes: 0) so the combined heatmap is the only mark
+               * column. */
+              const hiddenScroll = {
+                vertical: 'hidden' as const,
+                verticalScrollbarSize: 0,
+                verticalSliderSize: 0,
+              }
               this.monacoDiffEditor.getOriginalEditor().updateOptions({
-                scrollbar: {
-                  vertical: 'hidden',
-                  verticalScrollbarSize: 0,
-                  verticalSliderSize: 0,
-                },
+                scrollbar: hiddenScroll,
                 overviewRulerLanes: 0,
                 hideCursorInOverviewRuler: true,
               })
-              /* Modified pane: slim 8-px scrollbar visible AND its
-               * per-side overview ruler enabled with 3 lanes for
-               * diff-mark rendering. Monaco draws the overview ruler
-               * and the scrollbar in the SAME column (width =
-               * verticalScrollbarSize), so the heatmap and the
-               * scroll slider read as one unified 8-px chrome strip
-               * on the right edge of the modified pane. Click + drag
-               * on the slider scrolls; click on a change mark jumps
-               * to that line. */
               this.monacoDiffEditor.getModifiedEditor().updateOptions({
-                scrollbar: {
-                  vertical: 'auto',
-                  verticalScrollbarSize: 8,
-                  verticalSliderSize: 8,
-                  useShadows: false,
-                },
-                overviewRulerLanes: 3,
+                scrollbar: hiddenScroll,
+                overviewRulerLanes: 0,
                 hideCursorInOverviewRuler: true,
               })
             } catch (_e) {
