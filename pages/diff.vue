@@ -297,13 +297,9 @@ export default Vue.extend({
               // change overview rather than a redundant scrollbar.
               overviewRulerBorder: false,
               overviewRulerLanes: 3,
-              scrollbar: {
-                useShadows: false,
-                verticalScrollbarSize: 8,
-                horizontalScrollbarSize: 8,
-                verticalSliderSize: 8,
-                horizontalSliderSize: 8,
-              },
+              /* scrollbar settings (8-px slim bars) inherited from
+               * getMonacoEditorDefaultOptions(); per-side overrides
+               * below tune width=0 on the hidden original pane. */
               renderLineHighlight: 'none',
               renderOverviewRuler: true,
             }

@@ -93,6 +93,19 @@ export function getMonacoEditorDefaultOptions(theme: string): any {
     selectionHighlight: false,
     renderLineHighlight: 'none',
     inlineSuggest: { enabled: false },
+    /* Slim 8-px scrollbars on every Monaco editor that consumes these
+     * defaults — the home page paste boxes AND the diff editor below.
+     * Without this, the home editors get Monaco's stock ~14-px bars
+     * which look chunky next to the diff page's 8-px modified-pane
+     * scrollbar. Consistency across pre-diff (entry) and post-diff
+     * (view) keeps the visual weight of vertical chrome the same. */
+    scrollbar: {
+      useShadows: false,
+      verticalScrollbarSize: 8,
+      horizontalScrollbarSize: 8,
+      verticalSliderSize: 8,
+      horizontalSliderSize: 8,
+    },
   }
 }
 
