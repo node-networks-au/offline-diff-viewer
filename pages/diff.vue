@@ -284,24 +284,18 @@ export default Vue.extend({
                * when the container resizes, which is exactly the
                * flex-grow behaviour we have on the shell. */
               automaticLayout: true,
-              // Diff-heatmap overview ruler: rendered as the rightmost
-              // column inside the diff editor (Monaco's own combined
-              // ruler, distinct from the per-side editor rulers which
-              // we hide via overviewRulerLanes:0 below). overviewRuler
-              // Border:false drops the 1-px separator line so the
-              // ruler reads as a continuous part of the modified pane
-              // chrome. The modified pane's slim 8-px scrollbar still
-              // sits just inside the ruler — that's how Monaco
-              // composes diff editors, and the inset is intentional
-              // visual signaling that the rightmost column is the
-              // change overview rather than a redundant scrollbar.
+              /* Disable the diff editor's OWN combined overview ruler
+               * (Monaco renders this as a separate ~14-px column to
+               * the right of the modified pane, with the viewport
+               * slider as a chunky gray rounded-rect — that's what was
+               * appearing as an unhidable scrollbar). The heatmap +
+               * scroll affordance is moved to the modified pane's
+               * per-side overview ruler below, which Monaco renders
+               * at the same width as the scrollbar (8 px here) and
+               * fully wires for click-to-jump + drag-to-scroll. */
               overviewRulerBorder: false,
-              overviewRulerLanes: 3,
-              /* scrollbar settings (8-px slim bars) inherited from
-               * getMonacoEditorDefaultOptions(); per-side overrides
-               * below tune width=0 on the hidden original pane. */
               renderLineHighlight: 'none',
-              renderOverviewRuler: true,
+              renderOverviewRuler: false,
             }
           ) as any
           if (this.monacoDiffEditor) {
@@ -311,26 +305,36 @@ export default Vue.extend({
              * lock-step thanks to Monaco's intra-diff sync, so a
              * single bar drives both. */
             try {
-              /* Hide BOTH per-side scrollbars. The diff editor's own
-               * combined overview ruler (heatmap) at the far right is
-               * the single visible vertical affordance — Monaco wires
-               * click + drag on the overview ruler to scroll, and the
-               * mousewheel still works inside both panes. Per-side
-               * editor rulers are also off (lanes: 0) so the heatmap
-               * is the only overview marker. */
-              const hiddenScroll = {
-                vertical: 'hidden' as const,
-                verticalScrollbarSize: 0,
-                verticalSliderSize: 0,
-              }
+              /* Original pane: scrollbar + overview ruler BOTH off.
+               * Intra-diff sync drives this pane from the modified
+               * side's scrollbar, so a separate scroll affordance
+               * here would only confuse. */
               this.monacoDiffEditor.getOriginalEditor().updateOptions({
-                scrollbar: hiddenScroll,
+                scrollbar: {
+                  vertical: 'hidden',
+                  verticalScrollbarSize: 0,
+                  verticalSliderSize: 0,
+                },
                 overviewRulerLanes: 0,
                 hideCursorInOverviewRuler: true,
               })
+              /* Modified pane: slim 8-px scrollbar visible AND its
+               * per-side overview ruler enabled with 3 lanes for
+               * diff-mark rendering. Monaco draws the overview ruler
+               * and the scrollbar in the SAME column (width =
+               * verticalScrollbarSize), so the heatmap and the
+               * scroll slider read as one unified 8-px chrome strip
+               * on the right edge of the modified pane. Click + drag
+               * on the slider scrolls; click on a change mark jumps
+               * to that line. */
               this.monacoDiffEditor.getModifiedEditor().updateOptions({
-                scrollbar: hiddenScroll,
-                overviewRulerLanes: 0,
+                scrollbar: {
+                  vertical: 'auto',
+                  verticalScrollbarSize: 8,
+                  verticalSliderSize: 8,
+                  useShadows: false,
+                },
+                overviewRulerLanes: 3,
                 hideCursorInOverviewRuler: true,
               })
             } catch (_e) {
@@ -447,36 +451,18 @@ export default Vue.extend({
   height: 100% !important;
 }
 
-/* Belt-and-suspenders scrollbar dedup. Monaco's class names for the
- * original / modified panes vary across versions:
- *   - .editor.original / .editor.modified   (older)
- *   - .original-in-monaco-diff-editor /
- *     .modified-in-monaco-diff-editor       (newer)
- * The Monaco updateOptions() call in mounted() already hides both
- * per-side vertical scrollbars, but covering it here defends against
- * future bundle upgrades that might re-introduce the defaults. Block
- * is non-scoped so it reaches Monaco's externally-rendered DOM. */
+/* Belt-and-suspenders scrollbar dedup on the ORIGINAL pane only.
+ * Monaco's class names vary across versions:
+ *   - .editor.original                        (older)
+ *   - .original-in-monaco-diff-editor         (newer)
+ * The updateOptions() call in mounted() already hides this, but
+ * covering it here defends against bundle upgrades that ignore the
+ * JS override. The modified pane intentionally keeps its scrollbar
+ * (the unified scrollbar + heatmap column on the right edge). */
 .monaco-diff-editor .editor.original .monaco-scrollable-element > .scrollbar.vertical,
-.monaco-diff-editor .editor.modified .monaco-scrollable-element > .scrollbar.vertical,
-.monaco-diff-editor [class*="original-in"] .monaco-scrollable-element > .scrollbar.vertical,
-.monaco-diff-editor [class*="modified-in"] .monaco-scrollable-element > .scrollbar.vertical {
+.monaco-diff-editor [class*="original-in"] .monaco-scrollable-element > .scrollbar.vertical {
   display: none !important;
   width: 0 !important;
-}
-
-/* Narrow the diff editor's own overview ruler (the heatmap at the
- * far right) to match the 8-px scrollbar width we use everywhere
- * else. Monaco's default is ~14 px; we constrain both the wrapper
- * div and the canvas it renders the marks onto so the marks redraw
- * at the new width on next layout. .diffOverview is the wrapper;
- * the canvas inside it carries the actual drawn marks. */
-.monaco-diff-editor .diffOverview,
-.monaco-diff-editor .diffOverviewRuler {
-  width: 8px !important;
-}
-.monaco-diff-editor .diffOverview canvas,
-.monaco-diff-editor .diffOverviewRuler canvas {
-  width: 8px !important;
 }
 
 /* Per-pane edit pill. Two of them: left pill anchors to the right

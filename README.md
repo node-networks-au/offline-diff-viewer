@@ -68,25 +68,23 @@ Live at:
 
 ### Diff viewer (`/diff`)
 
-- **Side-by-side diff** with the **change heatmap doubling as the
-  single scroll affordance.** Both per-side scrollbars are hidden
-  via `scrollbar.vertical: 'hidden'`; the diff editor's own
-  combined overview ruler (`renderOverviewRuler: true`) is the
-  rightmost 8-px column inside the shell and shows added / removed
-  line marks at full document scale. Monaco wires click + drag on
-  the overview ruler to scroll position, and mousewheel still
-  works inside either pane — so users can navigate either by
-  spinning the wheel, clicking a change mark to jump to it, or
-  dragging the heatmap like a scrollbar. The heatmap width is
-  forced to 8 px via CSS (`.monaco-diff-editor .diffOverview` and
-  its child canvas) so the visual weight matches the slim 8-px
-  scrollbars on the entry page. `overviewRulerBorder: false`
-  drops the 1-px separator so the heatmap reads as a continuous
-  edge of the modified pane. Per-side editor rulers are also
-  disabled (`overviewRulerLanes: 0` +
-  `hideCursorInOverviewRuler: true`) so the heatmap is the only
-  overview marker — no duplicate cursor or error glyphs in the
-  middle of the diff.
+- **Side-by-side diff** with the **change heatmap unified into the
+  modified pane's scrollbar column.** Monaco's editor renders the
+  per-side overview ruler and the vertical scrollbar in the same
+  column whose width tracks `verticalScrollbarSize` — so by enabling
+  `overviewRulerLanes: 3` on the modified pane while keeping its
+  8-px scrollbar visible (`verticalScrollbarSize: 8`), the diff
+  marks and the scroll slider read as a single 8-px chrome strip
+  on the right edge of the diff. The original pane's scrollbar
+  AND overview ruler are both off (`overviewRulerLanes: 0`,
+  `scrollbar.vertical: 'hidden'`) since intra-diff sync drives
+  that side from the modified scrollbar anyway. The diff editor's
+  OWN combined overview ruler (which Monaco normally renders as a
+  separate wider column with a chunky viewport-position slider) is
+  disabled (`renderOverviewRuler: false`) so the unified per-side
+  column is the only vertical chrome. Scroll affordances: spin the
+  mousewheel inside either pane, drag the scroll slider on the
+  right edge, or click on a change mark to jump to that line.
 - **Editable pane labels** above the diff — rename either side and
   the URL hash is regenerated on the fly via `history.replaceState`,
   so the next *Copy link* picks up the new names.
