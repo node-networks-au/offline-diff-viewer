@@ -267,6 +267,50 @@ export default Vue.extend({
       const monacoEditorOptions = getMonacoEditorDefaultOptions(theme)
       loader.init().then((monaco) => {
         registerCustomLanguages(monaco)
+        /* Patch Monaco's hardcoded combined-overview ruler width from
+         * 30 → 8 px. The constant ENTIRE_DIFF_OVERVIEW_WIDTH is a
+         * `static readonly` field on the legacy v1 class
+         * `DiffEditorWidget` (which `createDiffEditor` instantiates as
+         * a subclass `StandaloneDiffEditor extends DiffEditorWidget`
+         * in 0.43.x by default). We have to patch the OWNER class, not
+         * the leaf: setting `.constructor.X = 8` on the instance only
+         * creates a shadowing own-property on the subclass while the
+         * parent's value (which the layout code reads) is unchanged.
+         *
+         * Strategy: build a throwaway diff editor in a detached DOM
+         * node to expose the real constructor (class names may be
+         * minified in the AMD CDN bundle, so we can't import directly).
+         * Then walk UP the prototype chain to find the class that owns
+         * its OWN ENTIRE_DIFF_OVERVIEW_WIDTH property, patch it, and
+         * dispose. Subsequent createDiffEditor() calls inherit the
+         * patched constant. */
+        try {
+          const NEW_WIDTH = 8
+          const walkUpAndPatch = (ctor: any, key: string, value: number) => {
+            let c = ctor
+            while (c && c !== Function.prototype) {
+              if (Object.prototype.hasOwnProperty.call(c, key)) {
+                c[key] = value
+                return true
+              }
+              c = Object.getPrototypeOf(c)
+            }
+            return false
+          }
+          const probeEl = document.createElement('div')
+          const probe: any = monaco.editor.createDiffEditor(probeEl, {
+            automaticLayout: false,
+          } as any)
+          walkUpAndPatch(
+            probe.constructor,
+            'ENTIRE_DIFF_OVERVIEW_WIDTH',
+            NEW_WIDTH
+          )
+          probe.dispose()
+        } catch (_e) {
+          /* Probe/patch failed — overview ruler stays at default 30 px.
+           * Not fatal; the heatmap still renders, just wider. */
+        }
         if (monacoDiffViewerEl) {
           this.monacoDiffEditor = monaco.editor.createDiffEditor(
             monacoDiffViewerEl,
@@ -305,38 +349,12 @@ export default Vue.extend({
             }
           ) as any
           if (this.monacoDiffEditor) {
-            /* Patch Monaco's hardcoded combined-overview width from
-             * 30 px → 8 px so the heatmap column matches the slim
-             * scrollbars used elsewhere. The constant is a static
-             * class field on DiffEditorWidget; Monaco re-reads it
-             * inside `_layoutOverviewRulers()` and `_doLayout()` on
-             * every layout() call, so patching after construction +
-             * calling layout() re-flows the editor widths, viewport
-             * padding, and canvas sizes consistently. The legacy
-             * widget exposes the static under the constructor (which
-             * we reach via the instance's .constructor); widget v2's
-             * `OverviewRulerPart` is also patched defensively for
-             * future bundle versions even though 0.43.x defaults to
-             * the legacy widget. */
-            try {
-              const TARGET_WIDTH = 8
-              const cls: any = (this.monacoDiffEditor as any).constructor
-              if (cls) {
-                cls.ENTIRE_DIFF_OVERVIEW_WIDTH = TARGET_WIDTH
-              }
-              const v2Part = (monaco as any)?.editor?.OverviewRulerPart
-              if (v2Part) {
-                v2Part.ONE_OVERVIEW_WIDTH = TARGET_WIDTH / 2
-                v2Part.ENTIRE_DIFF_OVERVIEW_WIDTH = TARGET_WIDTH
-              }
-              /* Force a layout pass so the editor widths + ruler
-               * canvas dimensions pick up the new constant. */
-              this.monacoDiffEditor.layout()
-            } catch (_e) {
-              /* Patch failed — overview ruler stays at default 30 px.
-               * Visually wider than the slim chrome elsewhere but not
-               * broken. */
-            }
+            /* Force a layout() right after construction so the editor
+             * widths + ruler canvas dimensions are computed against
+             * the patched ENTIRE_DIFF_OVERVIEW_WIDTH (the probe above
+             * patched it BEFORE this createDiffEditor call, but a
+             * belt-and-suspenders layout() here guarantees re-flow). */
+            try { this.monacoDiffEditor.layout() } catch (_e) {}
             try {
               /* Both per-side scrollbars hidden. The combined diff
                * overview ruler (now 8 px wide) is the single visible

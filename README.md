@@ -72,23 +72,41 @@ Live at:
   as the only scrollbar.** Monaco's diff editor renders a unified
   overview ruler at the rightmost column that aggregates added /
   removed line marks from BOTH sides into one heatmap (a per-side
-  overview ruler can only show one side's marks, so this is the
-  only path to a true combined view). The column's width is
-  hardcoded to 30 px in Monaco 0.43.x via the static
-  `DiffEditorWidget.ENTIRE_DIFF_OVERVIEW_WIDTH` — we **monkey-patch
-  it down to 8 px** at editor construction time by writing to the
-  static field on the constructor (Monaco re-reads it on every
-  `layout()` pass, so we patch then immediately call `layout()` to
-  re-flow widths + canvas sizes). Both per-side scrollbars are
-  hidden (`vertical: 'hidden'`, `verticalScrollbarSize: 0`); the
-  combined heatmap is the only visible vertical chrome on the
-  page. Scroll affordances all still work: the mousewheel scrolls
-  either pane (intra-diff sync keeps them locked), click on a
-  change mark jumps to that line, and click + drag on the heatmap
-  scrolls — Monaco's `delegateVerticalScrollbarPointerDown` routes
-  pointer events into the modified editor's underlying vertical
-  scrollbar by **screen-Y coordinates**, so the affordance survives
-  the visual scrollbar being hidden AND the ruler being narrowed.
+  overview ruler can only show its own side's marks, so this is
+  the only path to a true combined view). The column's width is
+  hardcoded to 30 px in Monaco 0.43.x via
+  `DiffEditorWidget.ENTIRE_DIFF_OVERVIEW_WIDTH`, a
+  `public static readonly` field at
+  `src/vs/editor/browser/widget/diffEditorWidget.ts` (vscode source
+  at the `vscodeRef` pinned by monaco-editor v0.43.0). It's NOT an
+  editor option, theme key, or CSS variable; nothing on the public
+  `monaco.editor.*` namespace lets you set it.
+
+  Our approach: **probe-and-walk-up monkey patch.** `createDiffEditor`
+  instantiates the leaf subclass `StandaloneDiffEditor extends
+  DiffEditorWidget`. Naively assigning `instance.constructor.X = 8`
+  only creates a shadowing own-property on the subclass while the
+  parent's value (which the layout code reads) is unchanged. So at
+  the start of the `loader.init().then(monaco => …)` callback we
+  create a throwaway diff editor in a detached DOM node to expose
+  the real constructor (class names may be minified in the AMD
+  CDN bundle, so direct ESM imports aren't available), walk UP the
+  prototype chain to find the class that owns its OWN
+  `ENTIRE_DIFF_OVERVIEW_WIDTH` property, patch it on the OWNER, and
+  dispose the probe. The real diff editor constructed after that
+  inherits the 8-px constant, and a `layout()` call right after
+  construction guarantees the widths + canvases pick it up.
+
+  Both per-side scrollbars are hidden (`vertical: 'hidden'`,
+  `verticalScrollbarSize: 0`); the combined heatmap is the only
+  visible vertical chrome on the page. Click + drag still work on
+  the narrowed ruler because Monaco's
+  `delegateVerticalScrollbarPointerDown` routes pointer events
+  into the modified editor's underlying vertical scrollbar by
+  **screen-Y coordinates**, independent of ruler X-width. Scroll
+  affordances: mousewheel inside either pane (intra-diff sync
+  drives both), click a change mark to jump to that line, or drag
+  the heatmap like a scrollbar.
 - **Editable pane labels** above the diff — rename either side and
   the URL hash is regenerated on the fly via `history.replaceState`,
   so the next *Copy link* picks up the new names.
