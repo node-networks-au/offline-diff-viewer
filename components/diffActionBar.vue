@@ -81,6 +81,12 @@ export default Vue.extend({
        * on the first change as soon as the diff is computed). */
       currentChange: 0,
       totalChanges: 0,
+      /* Disposer handle for the onDidUpdateDiff subscription so we can
+       * unsubscribe when the editor instance is swapped or the bar is
+       * destroyed. Held in data only so TS knows the field exists;
+       * Vue's reactivity on null → IDisposable swap is harmless
+       * because we never read the field outside the disposer logic. */
+      updateDiffDisposer: null,
     }
   },
   watch: {
@@ -92,12 +98,12 @@ export default Vue.extend({
     monacoDiffEditor: {
       immediate: true,
       handler(editor) {
-        if (this._updateDiffDisposer) {
-          this._updateDiffDisposer.dispose()
-          this._updateDiffDisposer = null
+        if (this.updateDiffDisposer) {
+          this.updateDiffDisposer.dispose()
+          this.updateDiffDisposer = null
         }
         if (!editor || typeof editor.onDidUpdateDiff !== 'function') return
-        this._updateDiffDisposer = editor.onDidUpdateDiff(() =>
+        this.updateDiffDisposer = editor.onDidUpdateDiff(() =>
           this.refreshChangeCount()
         )
         this.refreshChangeCount()
@@ -109,9 +115,9 @@ export default Vue.extend({
   },
   beforeDestroy() {
     document.removeEventListener('keydown', this.handleCtrlC)
-    if (this._updateDiffDisposer) {
-      this._updateDiffDisposer.dispose()
-      this._updateDiffDisposer = null
+    if (this.updateDiffDisposer) {
+      this.updateDiffDisposer.dispose()
+      this.updateDiffDisposer = null
     }
   },
   methods: {

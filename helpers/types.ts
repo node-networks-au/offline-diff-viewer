@@ -31,6 +31,7 @@ export interface DiffActionBarData {
   treeWalker: TreeWalker | null
   currentChange: number
   totalChanges: number
+  updateDiffDisposer: { dispose: () => void } | null
 }
 
 export interface DiffData {
