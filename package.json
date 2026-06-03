@@ -15,7 +15,7 @@
     "test": "jest --passWithNoTests"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=22"
   },
   "lint-staged": {
     "*.{js,vue,ts}": "eslint --fix",
