@@ -105,6 +105,7 @@ import Footer from '~/components/footer.vue'
 import Navbar from '~/components/navbar.vue'
 import Pencil from '~/components/icons/pencil.vue'
 import { getDecryptedText, getDepryctionKey } from '~/helpers/decrypt'
+import { buildLabelSyncUrl } from '~/helpers/labelSyncUrl'
 import { v2DiffData } from '~/helpers/types'
 import {
   E2E_DATA_DECRYPTING_INFO,
@@ -194,10 +195,10 @@ export default Vue.extend({
     /* Re-encode the current lhs/rhs/lhsLabel/rhsLabel payload into
      * the URL hash. Mirrors the gzip+base64 encoding the entry page
      * does on Compare; uses replaceState so we don't push a new
-     * history entry every keystroke. Skips when the page is being
-     * driven by a server-stored short link (the ?id= query path) —
-     * in that case the cached e2eLink would be stale and we let it
-     * regenerate next copy. */
+     * history entry every keystroke. Skips entirely when the page is
+     * driven by a server-stored short link (the ?id= query path),
+     * because the hash there is the decryption key — see
+     * buildLabelSyncUrl. */
     syncLabelsToUrl() {
       try {
         const lhs = String(this.lhs || '').trim()
@@ -210,9 +211,13 @@ export default Vue.extend({
         })
         const gzip = Buffer.from(pako.gzip(payload)).toString('base64')
         const hash = `#${doUrlSafeBase64(gzip)}`
-        const url = window.location.search.includes('id=')
-          ? window.location.pathname + window.location.search + hash
-          : window.location.pathname + hash
+        const url = buildLabelSyncUrl(window.location, hash)
+        // On the E2E (?id=) path buildLabelSyncUrl returns null: the URL
+        // hash there holds the AES decryption key, NOT the diff payload.
+        // Overwriting it (as this method used to) destroyed the key, so
+        // refreshing or re-copying the shared link could no longer decrypt
+        // the diff. Leave the URL — and the key — untouched in that case.
+        if (url === null) return
         window.history.replaceState(null, '', url)
         // Reset the action-bar's cached E2E link so the next copy
         // generates a new server-side payload that reflects the

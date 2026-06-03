@@ -36,6 +36,30 @@
       </button>
     </div>
 
+    <!-- Center: per-side line counts + net delta (b - a). "A" is the
+         original (left) pane, "B" is the modified (right) pane. -->
+    <div class="noden-line-stats" aria-label="Line counts" aria-live="polite">
+      <span class="noden-line-stat">
+        <span class="noden-line-stat-key">A</span>
+        <span class="noden-line-stat-val">{{ lineStats.a }}</span>
+      </span>
+      <span class="noden-line-stat">
+        <span class="noden-line-stat-key">B</span>
+        <span class="noden-line-stat-val">{{ lineStats.b }}</span>
+      </span>
+      <span
+        class="noden-line-stat noden-line-stat-delta"
+        :class="{
+          'is-positive': lineStats.delta > 0,
+          'is-negative': lineStats.delta < 0,
+        }"
+        :title="`Net change: ${formatDelta(lineStats.delta)} lines`"
+      >
+        <span class="noden-line-stat-key">Δ</span>
+        <span class="noden-line-stat-val">{{ formatDelta(lineStats.delta) }}</span>
+      </span>
+    </div>
+
     <!-- Right side: copy-link CTA. -->
     <CopyLink :click-handler="copyUrlToClipboard" :copied="copied" />
   </section>
@@ -55,6 +79,7 @@ import {
 } from '~/helpers/encrypt'
 import { DiffActionBarData } from '~/helpers/types'
 import { getRandomDiffId } from '~/helpers/utils'
+import { computeLineStats, formatDelta, LineStats } from '~/helpers/lineStats'
 export default Vue.extend({
   components: { CopyLink, Up, Down },
   props: {
@@ -89,6 +114,16 @@ export default Vue.extend({
       updateDiffDisposer: null,
     }
   },
+  computed: {
+    /* Per-side line counts + net delta, read reactively from the diff
+     * payload in the store (set by diff.vue's unzipCommitData, so it
+     * matches exactly what the editor renders). "a" is the original
+     * (left) side, "b" is the modified (right) side. */
+    lineStats(): LineStats {
+      const data = (this.$store.state as any).data || {}
+      return computeLineStats(String(data.lhs || ''), String(data.rhs || ''))
+    },
+  },
   watch: {
     /* Subscribe to Monaco's onDidUpdateDiff so the counter refreshes
      * whenever the diff is recomputed (initial load, model swap, etc).
@@ -121,6 +156,10 @@ export default Vue.extend({
     }
   },
   methods: {
+    /* Exposed so the template can sign-prefix the delta (+15 / -15 / 0). */
+    formatDelta(delta: number): string {
+      return formatDelta(delta)
+    },
     handleCtrlC(event: KeyboardEvent) {
       const { metaKey, ctrlKey, key } = event
       if (
@@ -290,6 +329,62 @@ export default Vue.extend({
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Center cluster: per-side line counts (A / B) and the net delta (Δ).
+ * Reads as quiet metadata — tabular figures so the numbers don't jitter
+ * as they change, muted key letters, and a colour-coded delta. */
+.noden-line-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--noden-text-secondary, #64748b);
+  user-select: none;
+}
+.noden-line-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.noden-line-stat-key {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.noden-line-stat-val {
+  color: var(--noden-text-primary, #1e3a5f);
+}
+/* Dark-theme overrides kept above the specificity-3 delta rules so the
+ * cascade reads in ascending specificity (stylelint no-descending). */
+.dark .noden-line-stats {
+  color: #9ca3af;
+}
+.dark .noden-line-stat-val {
+  color: #e5e7eb;
+}
+.noden-line-stat-delta.is-positive .noden-line-stat-val {
+  color: #16a34a;
+}
+.noden-line-stat-delta.is-negative .noden-line-stat-val {
+  color: #dc2626;
+}
+.dark .noden-line-stat-delta.is-positive .noden-line-stat-val {
+  color: #4ade80;
+}
+.dark .noden-line-stat-delta.is-negative .noden-line-stat-val {
+  color: #f87171;
+}
+
+/* On narrow viewports the action bar gets crowded; drop the line stats
+ * rather than let them wrap the bar onto a second row. */
+@media (max-width: 640px) {
+  .noden-line-stats {
+    display: none;
+  }
 }
 
 /* Counter pill between Previous / Next. Reads as a soft label, not
