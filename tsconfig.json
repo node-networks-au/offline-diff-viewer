@@ -33,6 +33,7 @@
     "node_modules",
     ".nuxt",
     "dist",
+    "api",
     "**/*.test.ts",
     "**/*.spec.ts"
   ]
