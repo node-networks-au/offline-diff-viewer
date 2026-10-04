@@ -16,7 +16,8 @@ export function getPool() {
       max: 5, // Maximum number of connections in the pool
       idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
       connectionTimeoutMillis: 2000, // How long to wait for a connection from the pool
-      ssl: true,
+      // Hosted Postgres needs TLS; the in-cluster diff-db sets DB_SSL=false.
+      ssl: process.env.DB_SSL !== 'false',
     })
   }
   return pool

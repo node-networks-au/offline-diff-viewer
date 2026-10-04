@@ -1,5 +1,4 @@
 import { Request, Response } from 'express'
-import { getPool } from './db/index.js'
 import { insertRecord } from './db/insertRecord.js'
 import { DBInsertRecord } from './types.js'
 export const config = { runtime: 'nodejs' }
@@ -14,6 +13,7 @@ export default async function handler(req: Request<{}, {}, DBInsertRecord>, res:
     if (result) {
       res.status(200).json({
         success: true,
+        address: body.id,
       })
     } else {
       throw new Error('Failed to insert record')
@@ -25,7 +25,3 @@ export default async function handler(req: Request<{}, {}, DBInsertRecord>, res:
     }
   }
 }
-
-process.on('SIGTERM', () => {
-  getPool().end()
-})

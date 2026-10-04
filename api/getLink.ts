@@ -1,6 +1,5 @@
 import { Request, Response } from 'express'
 import { getRecordById } from './db/getRecordById.js'
-import { getPool } from './db/index.js'
 import { DBRecord } from './types.js'
 
 export const config = { runtime: 'nodejs' }
@@ -16,7 +15,3 @@ export default async function handler(req: Request<{}, {}, {}, Pick<DBRecord, 'i
     }
   }
 }
-
-process.on('SIGTERM', () => {
-  getPool().end()
-})
